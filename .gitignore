@@ -1,3 +1,7 @@
+ffi/cmd/testrust/testrust.*.rcgu.o
+ffi/cmd/testrust/testrust.main.*.rcgu.o
+
+
 # ipfs can generate profiling dump files
 *.cpuprof
 *.memprof
