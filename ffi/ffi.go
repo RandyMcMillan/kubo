@@ -128,6 +128,22 @@ func kubo_init_repo(repoPath *C.char) int64 {
 		return -1
 	}
 
+	// Use loopback with random ports so multiple test nodes on the same
+	// machine do not collide. Disable transports that are not needed for
+	// local testing to keep startup fast and hermetic.
+	cfg.Addresses.Swarm = []string{
+		"/ip4/127.0.0.1/tcp/0",
+	}
+	cfg.Swarm.Transports.Network.QUIC = config.False
+	cfg.Swarm.Transports.Network.Relay = config.False
+	cfg.Swarm.Transports.Network.WebTransport = config.False
+	cfg.Swarm.Transports.Network.WebRTCDirect = config.False
+	cfg.Swarm.Transports.Network.Websocket = config.False
+	cfg.AutoTLS.Enabled = config.False
+	cfg.Routing.Type = config.NewOptionalString("none")
+	cfg.Bootstrap = []string{}
+	cfg.Discovery.MDNS.Enabled = false
+
 	if err := fsrepo.Init(path, cfg); err != nil {
 		setError(fmt.Errorf("init repo: %w", err))
 		return -1
