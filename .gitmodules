@@ -1,0 +1,3 @@
+[submodule "go/libp2p"]
+	path = go/libp2p
+	url = git@github.com:RandyMcMillan/go-libp2p.git
