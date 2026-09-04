@@ -7,6 +7,7 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -419,6 +420,127 @@ func kubo_unixfs_cat(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.s
 //export kubo_free_buffer
 func kubo_free_buffer(buf *C.uint8_t) {
 	C.free(unsafe.Pointer(buf))
+}
+
+// ---------------------------------------------------------------------------
+// Block API
+// ---------------------------------------------------------------------------
+
+//export kubo_block_put
+func kubo_block_put(handle uint64, data *C.uint8_t, length C.size_t) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	goData := C.GoBytes(unsafe.Pointer(data), C.int(length))
+	stat, err := h.api.Block().Put(h.ctx, bytes.NewReader(goData))
+	if err != nil {
+		setError(fmt.Errorf("block put: %w", err))
+		return nil
+	}
+
+	setError(nil)
+	return C.CString(stat.Path().RootCid().String())
+}
+
+//export kubo_block_get
+func kubo_block_get(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.size_t) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+
+	cidStrGo := C.GoString(cidStr)
+	var p path.Path
+	var err error
+
+	if strings.HasPrefix(cidStrGo, "/ipfs/") || strings.HasPrefix(cidStrGo, "/ipns/") {
+		p, err = path.NewPath(cidStrGo)
+	} else {
+		var c cid.Cid
+		c, err = cid.Decode(cidStrGo)
+		if err == nil {
+			p = path.FromCid(c)
+		}
+	}
+	if err != nil {
+		setError(fmt.Errorf("parse path: %w", err))
+		return -1
+	}
+
+	reader, err := h.api.Block().Get(h.ctx, p)
+	if err != nil {
+		setError(fmt.Errorf("block get: %w", err))
+		return -1
+	}
+
+	buf, err := io.ReadAll(reader)
+	if err != nil {
+		setError(fmt.Errorf("read block: %w", err))
+		return -1
+	}
+
+	if len(buf) == 0 {
+		*out = nil
+		*outLen = 0
+		return 0
+	}
+
+	cBuf := C.malloc(C.size_t(len(buf)))
+	copy((*[1 << 30]byte)(cBuf)[:len(buf):len(buf)], buf)
+	*out = (*C.uint8_t)(cBuf)
+	*outLen = C.size_t(len(buf))
+
+	setError(nil)
+	return 0
+}
+
+//export kubo_block_stat
+func kubo_block_stat(handle uint64, cidStr *C.char) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+
+	cidStrGo := C.GoString(cidStr)
+	var p path.Path
+	var err error
+
+	if strings.HasPrefix(cidStrGo, "/ipfs/") || strings.HasPrefix(cidStrGo, "/ipns/") {
+		p, err = path.NewPath(cidStrGo)
+	} else {
+		var c cid.Cid
+		c, err = cid.Decode(cidStrGo)
+		if err == nil {
+			p = path.FromCid(c)
+		}
+	}
+	if err != nil {
+		setError(fmt.Errorf("parse path: %w", err))
+		return -1
+	}
+
+	stat, err := h.api.Block().Stat(h.ctx, p)
+	if err != nil {
+		setError(fmt.Errorf("block stat: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return int64(stat.Size())
 }
 
 // ---------------------------------------------------------------------------
