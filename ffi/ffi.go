@@ -26,6 +26,8 @@ import (
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
 	"github.com/ipfs/kubo/repo/fsrepo"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 // ---------------------------------------------------------------------------
@@ -245,6 +247,65 @@ func kubo_node_peer_id(handle uint64) *C.char {
 	}
 
 	return C.CString(h.node.Identity.String())
+}
+
+//export kubo_node_listening_addrs
+func kubo_node_listening_addrs(handle uint64) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	addrs, err := h.api.Swarm().LocalAddrs(h.ctx)
+	if err != nil {
+		setError(fmt.Errorf("local addrs: %w", err))
+		return nil
+	}
+
+	var parts []string
+	for _, a := range addrs {
+		parts = append(parts, a.String())
+	}
+
+	setError(nil)
+	return C.CString(strings.Join(parts, "\n"))
+}
+
+//export kubo_node_connect
+func kubo_node_connect(handle uint64, addr *C.char) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+
+	addrStr := C.GoString(addr)
+	maddr, err := ma.NewMultiaddr(addrStr)
+	if err != nil {
+		setError(fmt.Errorf("parse multiaddr: %w", err))
+		return -1
+	}
+
+	info, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		setError(fmt.Errorf("extract peer info: %w", err))
+		return -1
+	}
+
+	if err := h.api.Swarm().Connect(h.ctx, *info); err != nil {
+		setError(fmt.Errorf("connect: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return 0
 }
 
 // ---------------------------------------------------------------------------
