@@ -326,6 +326,32 @@ func kubo_node_connect(handle uint64, addr *C.char) int64 {
 	return 0
 }
 
+//export kubo_swarm_peers
+func kubo_swarm_peers(handle uint64) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	peers, err := h.api.Swarm().Peers(h.ctx)
+	if err != nil {
+		setError(fmt.Errorf("swarm peers: %w", err))
+		return nil
+	}
+
+	var parts []string
+	for _, p := range peers {
+		parts = append(parts, p.ID().String())
+	}
+
+	setError(nil)
+	return C.CString(strings.Join(parts, "\n"))
+}
+
 // ---------------------------------------------------------------------------
 // UnixFS helpers
 // ---------------------------------------------------------------------------
