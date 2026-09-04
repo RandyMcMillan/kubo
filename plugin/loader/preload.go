@@ -9,6 +9,7 @@ pluginipldgit "github.com/ipfs/kubo/plugin/plugins/git"
 pluginlevelds "github.com/ipfs/kubo/plugin/plugins/levelds"
 pluginnopfs "github.com/ipfs/kubo/plugin/plugins/nopfs"
 pluginnostr "github.com/ipfs/kubo/plugin/plugins/nostr"
+pluginnostrrelay "github.com/ipfs/kubo/plugin/plugins/nostr-relay"
 pluginpebbleds "github.com/ipfs/kubo/plugin/plugins/pebbleds"
 pluginpeerlog "github.com/ipfs/kubo/plugin/plugins/peerlog"
 plugintelemetry "github.com/ipfs/kubo/plugin/plugins/telemetry"
@@ -31,4 +32,5 @@ func init() {
 	Preload(pluginnopfs.Plugins...)
 	Preload(plugintelemetry.Plugins...)
 	Preload(pluginnostr.Plugins...)
+	Preload(pluginnostrrelay.Plugins...)
 }

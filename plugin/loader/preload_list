@@ -15,3 +15,4 @@ fxtest github.com/ipfs/kubo/plugin/plugins/fxtest *
 nopfs github.com/ipfs/kubo/plugin/plugins/nopfs *
 telemetry github.com/ipfs/kubo/plugin/plugins/telemetry *
 nostr github.com/ipfs/kubo/plugin/plugins/nostr *
+nostrrelay github.com/ipfs/kubo/plugin/plugins/nostr-relay *
