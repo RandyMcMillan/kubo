@@ -172,7 +172,11 @@ fn test_unixfs_add_and_cat() {
             return;
         }
 
-        let got = slice::from_raw_parts(out, out_len);
+        let got = if out.is_null() {
+            &[][..]
+        } else {
+            slice::from_raw_parts(out, out_len)
+        };
         if got != data {
             fail(&format!(
                 "cat: expected {:?}, got {:?}",
@@ -237,7 +241,11 @@ fn test_block_put_get_stat() {
             return;
         }
 
-        let got = slice::from_raw_parts(out, out_len);
+        let got = if out.is_null() {
+            &[][..]
+        } else {
+            slice::from_raw_parts(out, out_len)
+        };
         if got != data {
             fail(&format!(
                 "block_get: expected {:?}, got {:?}",
@@ -365,7 +373,11 @@ fn test_add_cat_empty() {
             return;
         }
 
-        let got = slice::from_raw_parts(out, out_len);
+        let got = if out.is_null() {
+            &[][..]
+        } else {
+            slice::from_raw_parts(out, out_len)
+        };
         if got != data {
             fail(&format!(
                 "cat: expected empty, got {:?}",
@@ -467,7 +479,11 @@ fn test_two_nodes_exchange_data() {
             return;
         }
 
-        let got = slice::from_raw_parts(out, out_len);
+        let got = if out.is_null() {
+            &[][..]
+        } else {
+            slice::from_raw_parts(out, out_len)
+        };
         if got != data {
             fail(&format!(
                 "p2p data mismatch: expected {:?}, got {:?}",
