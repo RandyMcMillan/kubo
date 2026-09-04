@@ -10,6 +10,7 @@ import "C"
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
@@ -345,11 +346,47 @@ func kubo_swarm_peers(handle uint64) *C.char {
 
 	var parts []string
 	for _, p := range peers {
-		parts = append(parts, p.ID().String())
+		addr := ""
+		if p.Address() != nil {
+			addr = p.Address().String()
+		}
+		parts = append(parts, p.ID().String()+"\t"+addr)
 	}
 
 	setError(nil)
 	return C.CString(strings.Join(parts, "\n"))
+}
+
+//export kubo_node_id
+func kubo_node_id(handle uint64) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	id := h.node.Identity.String()
+	pk, err := h.node.Identity.ExtractPublicKey()
+	if err != nil {
+		setError(fmt.Errorf("extract public key: %w", err))
+		return nil
+	}
+	pkBytes, err := pk.Raw()
+	if err != nil {
+		setError(fmt.Errorf("raw public key: %w", err))
+		return nil
+	}
+
+	info := fmt.Sprintf(
+		`{"id":"%s","public_key":"%s"}`,
+		id,
+		base64.StdEncoding.EncodeToString(pkBytes),
+	)
+	setError(nil)
+	return C.CString(info)
 }
 
 // ---------------------------------------------------------------------------
