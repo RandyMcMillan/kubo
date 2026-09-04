@@ -20,6 +20,7 @@ extern "C" {
     fn kubo_node_stop(handle: u64) -> i64;
     fn kubo_node_peer_id(handle: u64) -> *mut c_char;
     fn kubo_node_listening_addrs(handle: u64) -> *mut c_char;
+    fn kubo_node_connect(handle: u64, addr: *const c_char) -> i64;
     fn kubo_unixfs_add_bytes(handle: u64, data: *const u8, length: usize) -> *mut c_char;
     fn kubo_unixfs_cat(
         handle: u64,
