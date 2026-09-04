@@ -291,6 +291,201 @@ fn test_listening_addrs() {
     }
 }
 
+fn test_hello_world_cidv0_alignment() {
+    let tmp = "./tmp/kubo-rust-test-cidv0";
+    rmrf(tmp);
+
+    unsafe {
+        let path = CString::new(tmp).unwrap();
+        if kubo_init_repo(path.as_ptr()) != 0 {
+            fail("init repo failed");
+            return;
+        }
+
+        let handle = kubo_node_start(path.as_ptr(), 0);
+        if handle == 0 {
+            fail("node start failed");
+            return;
+        }
+
+        let data = b"hello world";
+        let cid = kubo_unixfs_add_bytes(handle, data.as_ptr(), data.len());
+        if cid.is_null() {
+            fail("add_bytes returned null");
+            kubo_node_stop(handle);
+            return;
+        }
+        let cid_str = CStr::from_ptr(cid).to_string_lossy();
+        if cid_str != "Qmf412jQZiuVUtdgnB36FXFX7xg5V6KEbSJ4dpQuhkLyfD" {
+            fail(&format!(
+                "CID mismatch: expected Qmf412jQZiuVUtdgnB36FXFX7xg5V6KEbSJ4dpQuhkLyfD, got {}",
+                cid_str
+            ));
+        } else {
+            ok("CIDv0 alignment");
+        }
+
+        kubo_free_string(cid);
+        kubo_node_stop(handle);
+    }
+}
+
+fn test_add_cat_empty() {
+    let tmp = "./tmp/kubo-rust-test-empty";
+    rmrf(tmp);
+
+    unsafe {
+        let path = CString::new(tmp).unwrap();
+        if kubo_init_repo(path.as_ptr()) != 0 {
+            fail("init repo failed");
+            return;
+        }
+
+        let handle = kubo_node_start(path.as_ptr(), 0);
+        if handle == 0 {
+            fail("node start failed");
+            return;
+        }
+
+        let data: &[u8] = b"";
+        let cid = kubo_unixfs_add_bytes(handle, data.as_ptr(), data.len());
+        if cid.is_null() {
+            fail("add_bytes returned null");
+            kubo_node_stop(handle);
+            return;
+        }
+
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        if kubo_unixfs_cat(handle, cid, &mut out, &mut out_len) != 0 {
+            kubo_free_string(cid);
+            fail("cat failed");
+            kubo_node_stop(handle);
+            return;
+        }
+
+        let got = slice::from_raw_parts(out, out_len);
+        if got != data {
+            fail(&format!(
+                "cat: expected empty, got {:?}",
+                String::from_utf8_lossy(got)
+            ));
+        } else {
+            ok("empty add/cat roundtrip");
+        }
+
+        if !out.is_null() {
+            kubo_free_buffer(out);
+        }
+        kubo_free_string(cid);
+        kubo_node_stop(handle);
+    }
+}
+
+fn test_two_nodes_exchange_data() {
+    let tmp_a = "./tmp/kubo-rust-test-p2p-a";
+    let tmp_b = "./tmp/kubo-rust-test-p2p-b";
+    rmrf(tmp_a);
+    rmrf(tmp_b);
+
+    unsafe {
+        let path_a = CString::new(tmp_a).unwrap();
+        let path_b = CString::new(tmp_b).unwrap();
+        if kubo_init_repo(path_a.as_ptr()) != 0 || kubo_init_repo(path_b.as_ptr()) != 0 {
+            fail("init repo failed");
+            return;
+        }
+
+        let handle_a = kubo_node_start(path_a.as_ptr(), 1);
+        let handle_b = kubo_node_start(path_b.as_ptr(), 1);
+        if handle_a == 0 || handle_b == 0 {
+            fail("node start failed");
+            if handle_a != 0 {
+                kubo_node_stop(handle_a);
+            }
+            if handle_b != 0 {
+                kubo_node_stop(handle_b);
+            }
+            return;
+        }
+
+        let peer_id_a = kubo_node_peer_id(handle_a);
+        let addrs_a = kubo_node_listening_addrs(handle_a);
+        if peer_id_a.is_null() || addrs_a.is_null() {
+            fail("node_a info missing");
+            if !peer_id_a.is_null() {
+                kubo_free_string(peer_id_a);
+            }
+            if !addrs_a.is_null() {
+                kubo_free_string(addrs_a);
+            }
+            kubo_node_stop(handle_a);
+            kubo_node_stop(handle_b);
+            return;
+        }
+
+        let peer_id_a_str = CStr::from_ptr(peer_id_a).to_string_lossy().to_string();
+        let addrs_a_str = CStr::from_ptr(addrs_a).to_string_lossy();
+        let first_addr = addrs_a_str.lines().next().unwrap_or("");
+        if first_addr.is_empty() {
+            fail("node_a has no addresses");
+            kubo_free_string(peer_id_a);
+            kubo_free_string(addrs_a);
+            kubo_node_stop(handle_a);
+            kubo_node_stop(handle_b);
+            return;
+        }
+        let dial_addr = format!("{}/p2p/{}", first_addr, peer_id_a_str);
+        kubo_free_string(peer_id_a);
+        kubo_free_string(addrs_a);
+
+        let dial = CString::new(dial_addr).unwrap();
+        if kubo_node_connect(handle_b, dial.as_ptr()) != 0 {
+            fail("connect b->a failed");
+            kubo_node_stop(handle_a);
+            kubo_node_stop(handle_b);
+            return;
+        }
+
+        let data = b"peer-to-peer hello";
+        let cid = kubo_unixfs_add_bytes(handle_a, data.as_ptr(), data.len());
+        if cid.is_null() {
+            fail("add_bytes returned null");
+            kubo_node_stop(handle_a);
+            kubo_node_stop(handle_b);
+            return;
+        }
+
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        if kubo_unixfs_cat(handle_b, cid, &mut out, &mut out_len) != 0 {
+            kubo_free_string(cid);
+            fail("cat from node_b failed");
+            kubo_node_stop(handle_a);
+            kubo_node_stop(handle_b);
+            return;
+        }
+
+        let got = slice::from_raw_parts(out, out_len);
+        if got != data {
+            fail(&format!(
+                "p2p data mismatch: expected {:?}, got {:?}",
+                String::from_utf8_lossy(data),
+                String::from_utf8_lossy(got)
+            ));
+        } else {
+            ok("two nodes exchange data");
+        }
+
+        if !out.is_null() {
+            kubo_free_buffer(out);
+        }
+        kubo_free_string(cid);
+        kubo_node_stop(handle_a);
+        kubo_node_stop(handle_b);
+    }
+}
+
 fn main() {
     println!("=== Rust FFI Test Runner ===");
 
@@ -299,6 +494,9 @@ fn main() {
     test_unixfs_add_and_cat();
     test_block_put_get_stat();
     test_listening_addrs();
+    test_hello_world_cidv0_alignment();
+    test_add_cat_empty();
+    test_two_nodes_exchange_data();
 
     println!();
     let failures = FAILURES.load(Ordering::SeqCst);
