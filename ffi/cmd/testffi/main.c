@@ -46,12 +46,12 @@ static void test_version(void) {
         return;
     }
     if (strlen(v) == 0) {
-        kubo_free_string(v);
+        kubo_ffi_free_string(v);
         failf("version is empty");
         return;
     }
     okf("version = %s", v);
-    kubo_free_string(v);
+    kubo_ffi_free_string(v);
 }
 
 static void test_init_repo_and_node_lifecycle(void) {
@@ -59,17 +59,17 @@ static void test_init_repo_and_node_lifecycle(void) {
     rmrf(tmp);
 
     if (kubo_init_repo((char *)tmp) != 0) {
-        char *err = kubo_last_error();
+        char *err = kubo_ffi_last_error();
         failf("init repo: %s", err ? err : "unknown");
-        if (err) kubo_free_string(err);
+        if (err) kubo_ffi_free_string(err);
         return;
     }
 
     uint64_t handle = kubo_node_start((char *)tmp, 0);
     if (handle == 0) {
-        char *err = kubo_last_error();
+        char *err = kubo_ffi_last_error();
         failf("node start: %s", err ? err : "unknown");
-        if (err) kubo_free_string(err);
+        if (err) kubo_ffi_free_string(err);
         return;
     }
 
@@ -80,13 +80,13 @@ static void test_init_repo_and_node_lifecycle(void) {
         return;
     }
     if (strlen(peer_id) == 0) {
-        kubo_free_string(peer_id);
+        kubo_ffi_free_string(peer_id);
         failf("peer_id is empty");
         kubo_node_stop(handle);
         return;
     }
     okf("peer_id = %s", peer_id);
-    kubo_free_string(peer_id);
+    kubo_ffi_free_string(peer_id);
 
     if (kubo_node_stop(handle) != 0) {
         failf("node stop failed");
@@ -120,7 +120,7 @@ static void test_unixfs_add_and_cat(void) {
     }
 
     if (strlen(cid) == 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("cid is empty");
         kubo_node_stop(handle);
         return;
@@ -129,7 +129,7 @@ static void test_unixfs_add_and_cat(void) {
     uint8_t *out = NULL;
     size_t out_len = 0;
     if (kubo_unixfs_cat(handle, cid, &out, &out_len) != 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("cat failed");
         kubo_node_stop(handle);
         return;
@@ -141,8 +141,8 @@ static void test_unixfs_add_and_cat(void) {
         okf("unixfs add/cat roundtrip");
     }
 
-    if (out) kubo_free_buffer(out);
-    kubo_free_string(cid);
+    if (out) kubo_ffi_free_buffer(out);
+    kubo_ffi_free_string(cid);
     kubo_node_stop(handle);
 }
 
@@ -171,7 +171,7 @@ static void test_block_put_get_stat(void) {
     }
 
     if (strlen(cid) == 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("cid is empty");
         kubo_node_stop(handle);
         return;
@@ -185,7 +185,7 @@ static void test_block_put_get_stat(void) {
     uint8_t *out = NULL;
     size_t out_len = 0;
     if (kubo_block_get(handle, cid, &out, &out_len) != 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("block_get failed");
         kubo_node_stop(handle);
         return;
@@ -197,8 +197,8 @@ static void test_block_put_get_stat(void) {
         okf("block put/get/stat roundtrip");
     }
 
-    if (out) kubo_free_buffer(out);
-    kubo_free_string(cid);
+    if (out) kubo_ffi_free_buffer(out);
+    kubo_ffi_free_string(cid);
     kubo_node_stop(handle);
 }
 
@@ -224,13 +224,13 @@ static void test_listening_addrs(void) {
         return;
     }
     if (strlen(addrs) == 0) {
-        kubo_free_string(addrs);
+        kubo_ffi_free_string(addrs);
         failf("listening_addrs is empty");
         kubo_node_stop(handle);
         return;
     }
     okf("listening_addrs = %s", addrs);
-    kubo_free_string(addrs);
+    kubo_ffi_free_string(addrs);
     kubo_node_stop(handle);
 }
 
@@ -264,7 +264,7 @@ static void test_hello_world_cidv0_alignment(void) {
         okf("CIDv0 alignment");
     }
 
-    kubo_free_string(cid);
+    kubo_ffi_free_string(cid);
     kubo_node_stop(handle);
 }
 
@@ -293,7 +293,7 @@ static void test_add_cat_empty(void) {
     uint8_t *out = NULL;
     size_t out_len = 0;
     if (kubo_unixfs_cat(handle, cid, &out, &out_len) != 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("cat failed");
         kubo_node_stop(handle);
         return;
@@ -305,8 +305,8 @@ static void test_add_cat_empty(void) {
         okf("empty add/cat roundtrip");
     }
 
-    if (out) kubo_free_buffer(out);
-    kubo_free_string(cid);
+    if (out) kubo_ffi_free_buffer(out);
+    kubo_ffi_free_string(cid);
     kubo_node_stop(handle);
 }
 
@@ -334,8 +334,8 @@ static void test_two_nodes_exchange_data(void) {
     char *addrs_a = kubo_node_listening_addrs(handle_a);
     if (!peer_id_a || !addrs_a || strlen(addrs_a) == 0) {
         failf("node_a info missing");
-        if (peer_id_a) kubo_free_string(peer_id_a);
-        if (addrs_a) kubo_free_string(addrs_a);
+        if (peer_id_a) kubo_ffi_free_string(peer_id_a);
+        if (addrs_a) kubo_ffi_free_string(addrs_a);
         kubo_node_stop(handle_a);
         kubo_node_stop(handle_b);
         return;
@@ -346,8 +346,8 @@ static void test_two_nodes_exchange_data(void) {
     char *newline = strchr(addrs_a, '\n');
     if (newline) *newline = '\0';
     snprintf(dial_addr, sizeof(dial_addr), "%s/p2p/%s", addrs_a, peer_id_a);
-    kubo_free_string(addrs_a);
-    kubo_free_string(peer_id_a);
+    kubo_ffi_free_string(addrs_a);
+    kubo_ffi_free_string(peer_id_a);
 
     if (kubo_node_connect(handle_b, dial_addr) != 0) {
         failf("connect b->a failed");
@@ -369,7 +369,7 @@ static void test_two_nodes_exchange_data(void) {
     uint8_t *out = NULL;
     size_t out_len = 0;
     if (kubo_unixfs_cat(handle_b, cid, &out, &out_len) != 0) {
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         failf("cat from node_b failed");
         kubo_node_stop(handle_a);
         kubo_node_stop(handle_b);
@@ -382,8 +382,8 @@ static void test_two_nodes_exchange_data(void) {
         okf("two nodes exchange data");
     }
 
-    if (out) kubo_free_buffer(out);
-    kubo_free_string(cid);
+    if (out) kubo_ffi_free_buffer(out);
+    kubo_ffi_free_string(cid);
     kubo_node_stop(handle_a);
     kubo_node_stop(handle_b);
 }

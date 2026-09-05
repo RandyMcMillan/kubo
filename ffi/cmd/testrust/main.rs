@@ -13,8 +13,8 @@ use std::slice;
 #[link(name = "kubo_ffi", kind = "static")]
 extern "C" {
     fn kubo_version() -> *mut c_char;
-    fn kubo_last_error() -> *mut c_char;
-    fn kubo_free_string(s: *mut c_char);
+    fn kubo_ffi_last_error() -> *mut c_char;
+    fn kubo_ffi_free_string(s: *mut c_char);
     fn kubo_init_repo(repoPath: *const c_char) -> i64;
     fn kubo_node_start(repoPath: *const c_char, online: u8) -> u64;
     fn kubo_node_stop(handle: u64) -> i64;
@@ -36,7 +36,7 @@ extern "C" {
         out_len: *mut usize,
     ) -> i64;
     fn kubo_block_stat(handle: u64, cid_str: *const c_char) -> i64;
-    fn kubo_free_buffer(buf: *mut u8);
+    fn kubo_ffi_free_buffer(buf: *mut u8);
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -65,12 +65,12 @@ fn test_version() {
         }
         let s = CStr::from_ptr(v).to_string_lossy();
         if s.is_empty() {
-            kubo_free_string(v);
+            kubo_ffi_free_string(v);
             fail("version is empty");
             return;
         }
         ok(&format!("version = {}", s));
-        kubo_free_string(v);
+        kubo_ffi_free_string(v);
     }
 }
 
@@ -81,12 +81,12 @@ fn test_init_repo_and_node_lifecycle() {
     unsafe {
         let path = CString::new(tmp).unwrap();
         if kubo_init_repo(path.as_ptr()) != 0 {
-            let err = kubo_last_error();
+            let err = kubo_ffi_last_error();
             let msg = if err.is_null() {
                 "unknown".to_string()
             } else {
                 let s = CStr::from_ptr(err).to_string_lossy().to_string();
-                kubo_free_string(err);
+                kubo_ffi_free_string(err);
                 s
             };
             fail(&format!("init repo: {}", msg));
@@ -95,12 +95,12 @@ fn test_init_repo_and_node_lifecycle() {
 
         let handle = kubo_node_start(path.as_ptr(), 0);
         if handle == 0 {
-            let err = kubo_last_error();
+            let err = kubo_ffi_last_error();
             let msg = if err.is_null() {
                 "unknown".to_string()
             } else {
                 let s = CStr::from_ptr(err).to_string_lossy().to_string();
-                kubo_free_string(err);
+                kubo_ffi_free_string(err);
                 s
             };
             fail(&format!("node start: {}", msg));
@@ -115,13 +115,13 @@ fn test_init_repo_and_node_lifecycle() {
         }
         let id_str = CStr::from_ptr(peer_id).to_string_lossy();
         if id_str.is_empty() {
-            kubo_free_string(peer_id);
+            kubo_ffi_free_string(peer_id);
             fail("peer_id is empty");
             kubo_node_stop(handle);
             return;
         }
         ok(&format!("peer_id = {}", id_str));
-        kubo_free_string(peer_id);
+        kubo_ffi_free_string(peer_id);
 
         if kubo_node_stop(handle) != 0 {
             fail("node stop failed");
@@ -157,7 +157,7 @@ fn test_unixfs_add_and_cat() {
         }
         let cid_str = CStr::from_ptr(cid).to_string_lossy().to_string();
         if cid_str.is_empty() {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("cid is empty");
             kubo_node_stop(handle);
             return;
@@ -166,7 +166,7 @@ fn test_unixfs_add_and_cat() {
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
         if kubo_unixfs_cat(handle, cid, &mut out, &mut out_len) != 0 {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("cat failed");
             kubo_node_stop(handle);
             return;
@@ -188,9 +188,9 @@ fn test_unixfs_add_and_cat() {
         }
 
         if !out.is_null() {
-            kubo_free_buffer(out);
+            kubo_ffi_free_buffer(out);
         }
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         kubo_node_stop(handle);
     }
 }
@@ -221,7 +221,7 @@ fn test_block_put_get_stat() {
         }
         let cid_str = CStr::from_ptr(cid).to_string_lossy().to_string();
         if cid_str.is_empty() {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("cid is empty");
             kubo_node_stop(handle);
             return;
@@ -235,7 +235,7 @@ fn test_block_put_get_stat() {
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
         if kubo_block_get(handle, cid, &mut out, &mut out_len) != 0 {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("block_get failed");
             kubo_node_stop(handle);
             return;
@@ -257,9 +257,9 @@ fn test_block_put_get_stat() {
         }
 
         if !out.is_null() {
-            kubo_free_buffer(out);
+            kubo_ffi_free_buffer(out);
         }
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         kubo_node_stop(handle);
     }
 }
@@ -289,13 +289,13 @@ fn test_listening_addrs() {
         }
         let s = CStr::from_ptr(addrs).to_string_lossy();
         if s.is_empty() {
-            kubo_free_string(addrs);
+            kubo_ffi_free_string(addrs);
             fail("listening_addrs is empty");
             kubo_node_stop(handle);
             return;
         }
         ok(&format!("listening_addrs = {}", s));
-        kubo_free_string(addrs);
+        kubo_ffi_free_string(addrs);
         kubo_node_stop(handle);
     }
 }
@@ -334,7 +334,7 @@ fn test_hello_world_cidv0_alignment() {
             ok("CIDv0 alignment");
         }
 
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         kubo_node_stop(handle);
     }
 }
@@ -367,7 +367,7 @@ fn test_add_cat_empty() {
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
         if kubo_unixfs_cat(handle, cid, &mut out, &mut out_len) != 0 {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("cat failed");
             kubo_node_stop(handle);
             return;
@@ -388,9 +388,9 @@ fn test_add_cat_empty() {
         }
 
         if !out.is_null() {
-            kubo_free_buffer(out);
+            kubo_ffi_free_buffer(out);
         }
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         kubo_node_stop(handle);
     }
 }
@@ -427,10 +427,10 @@ fn test_two_nodes_exchange_data() {
         if peer_id_a.is_null() || addrs_a.is_null() {
             fail("node_a info missing");
             if !peer_id_a.is_null() {
-                kubo_free_string(peer_id_a);
+                kubo_ffi_free_string(peer_id_a);
             }
             if !addrs_a.is_null() {
-                kubo_free_string(addrs_a);
+                kubo_ffi_free_string(addrs_a);
             }
             kubo_node_stop(handle_a);
             kubo_node_stop(handle_b);
@@ -442,15 +442,15 @@ fn test_two_nodes_exchange_data() {
         let first_addr = addrs_a_str.lines().next().unwrap_or("");
         if first_addr.is_empty() {
             fail("node_a has no addresses");
-            kubo_free_string(peer_id_a);
-            kubo_free_string(addrs_a);
+            kubo_ffi_free_string(peer_id_a);
+            kubo_ffi_free_string(addrs_a);
             kubo_node_stop(handle_a);
             kubo_node_stop(handle_b);
             return;
         }
         let dial_addr = format!("{}/p2p/{}", first_addr, peer_id_a_str);
-        kubo_free_string(peer_id_a);
-        kubo_free_string(addrs_a);
+        kubo_ffi_free_string(peer_id_a);
+        kubo_ffi_free_string(addrs_a);
 
         let dial = CString::new(dial_addr).unwrap();
         if kubo_node_connect(handle_b, dial.as_ptr()) != 0 {
@@ -472,7 +472,7 @@ fn test_two_nodes_exchange_data() {
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
         if kubo_unixfs_cat(handle_b, cid, &mut out, &mut out_len) != 0 {
-            kubo_free_string(cid);
+            kubo_ffi_free_string(cid);
             fail("cat from node_b failed");
             kubo_node_stop(handle_a);
             kubo_node_stop(handle_b);
@@ -495,9 +495,9 @@ fn test_two_nodes_exchange_data() {
         }
 
         if !out.is_null() {
-            kubo_free_buffer(out);
+            kubo_ffi_free_buffer(out);
         }
-        kubo_free_string(cid);
+        kubo_ffi_free_string(cid);
         kubo_node_stop(handle_a);
         kubo_node_stop(handle_b);
     }
