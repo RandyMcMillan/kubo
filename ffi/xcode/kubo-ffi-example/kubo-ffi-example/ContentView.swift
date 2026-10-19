@@ -198,6 +198,7 @@ struct ContentView: View {
                     self.peerId = n.peerId ?? ""
                     self.addrs = n.listeningAddrs ?? ""
                     self.webUrl = "http://\(host):\(port)/webui/"
+                    self.selectedSection = .webui
                     self.log("[auto] node started peer=\(self.peerId)")
                     self.log("[auto] listening: \(self.addrs)")
                     self.log("[auto] webui: \(self.webUrl)")
@@ -254,6 +255,7 @@ struct ContentView: View {
                     self.peerId = n.peerId ?? ""
                     self.addrs = n.listeningAddrs ?? ""
                     self.webUrl = "http://\(host):\(port)/webui/"
+                    self.selectedSection = .webui
                     self.log("[node started] peer=\(self.peerId)")
                     self.log("listening: \(self.addrs)")
                     self.log("webui: \(self.webUrl)")
