@@ -82,16 +82,6 @@ struct ContentView: View {
                         }
 
                         // Command runner
-                        GroupBox("Command") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    TextField("ipfs …", text: $command)
-                                    Button("Run") { run(command) }.disabled(busy)
-                                }
-                            }
-                            .padding(8)
-                        }
-
                         if !webUrl.isEmpty && selectedSection == .webui {
                             GroupBox("WebUI") {
                                 WebView(urlString: webUrl).frame(minHeight: 360)
