@@ -5,7 +5,7 @@ import Kubo
 struct ContentView: View {
     @State private var version: String = Kubo.version()
     @State private var repoPath: String = FileManager.default.temporaryDirectory.appendingPathComponent("kubo-xcode-demo").path
-    @State private var command: String = "swarm peers"
+    @State private var command: String = "id"
     @State private var output: String = ""
     @State private var busy: Bool = false
     @State private var node: Kubo.Node? = nil
@@ -19,8 +19,10 @@ struct ContentView: View {
 
     enum Section: String, CaseIterable, Identifiable {
         case status = "Status"
+        case files = "Files"
         case peers = "Peers"
-        case commands = "Commands"
+        case settings = "Settings"
+        case diagnostics = "Diagnostics"
         case webui = "WebUI"
         var id: String { rawValue }
     }
@@ -29,14 +31,13 @@ struct ContentView: View {
         NavigationSplitView {
             List(selection: $selectedSection) {
                 ForEach(Section.allCases) { section in
-                    Label(section.rawValue, systemImage: icon(for: section))
-                        .tag(section)
+                    Label(section.rawValue, systemImage: icon(for: section)).tag(section)
                 }
             }
             .navigationTitle("Kubo")
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Kubo IPFS FFI Demo").font(.title)
+                Text("Kubo IPFS FFI").font(.title)
                 Text("Kubo version: \(version)").font(.caption)
                 TextField("Repo path", text: $repoPath)
                 HStack {
@@ -51,34 +52,40 @@ struct ContentView: View {
                 }
                 switch selectedSection {
                 case .status:
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Button("ID") { run("id") }
-                            Button("Version") { run("version") }
-                            Button("Swarm Addrs") { run("swarm addrs listen") }
-                        }
+                    HStack {
+                        Button("ID") { run("id") }
+                        Button("Version") { run("version") }
+                        Button("Repo Stat") { run("repo stat") }
+                        Button("API: version") { runApi("version") }
+                    }
+                case .files:
+                    HStack {
+                        Button("Add (stdin)") { run("add --help") }
+                        Button("Files ls /") { run("files ls /") }
+                        Button("Pin ls") { run("pin ls") }
                     }
                 case .peers:
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Button("Swarm Peers") { showPeers() }
-                            Button("Dial Bootstrap") { dialBootstrap() }
-                        }
+                    HStack {
+                        Button("Swarm Peers") { showPeers() }
+                        Button("Dial Bootstrap") { dialBootstrap() }
+                        Button("Bootstrap List") { run("bootstrap list") }
                     }
-                case .commands:
-                    VStack(alignment: .leading) {
-                        HStack {
-                            TextField("Command", text: $command)
-                            Button("Run") { run(command) }.disabled(busy)
-                        }
+                case .settings:
+                    HStack {
+                        Button("Config show") { run("config show") }
+                        Button("API: config") { runApi("config/show") }
+                    }
+                case .diagnostics:
+                    HStack {
+                        Button("Diag") { run("diag sys") }
+                        Button("Log level") { run("log level") }
+                        Button("Stats bw") { run("stats bw") }
                     }
                 case .webui:
-                    VStack {
-                        if !webUrl.isEmpty {
-                            WebView(urlString: webUrl)
-                        } else {
-                            Text("Start a node to load the WebUI").foregroundColor(.secondary)
-                        }
+                    if !webUrl.isEmpty {
+                        WebView(urlString: webUrl)
+                    } else {
+                        Text("Start a node to load the WebUI").foregroundColor(.secondary)
                     }
                 }
                 if busy { ProgressView() }
@@ -97,8 +104,10 @@ struct ContentView: View {
     private func icon(for section: Section) -> String {
         switch section {
         case .status: return "info.circle"
+        case .files: return "doc"
         case .peers: return "network"
-        case .commands: return "terminal"
+        case .settings: return "gear"
+        case .diagnostics: return "stethoscope"
         case .webui: return "globe"
         }
     }
@@ -111,9 +120,7 @@ struct ContentView: View {
     private func startLogPolling() {
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             let chunk = Kubo.getLogs()
-            if !chunk.isEmpty {
-                output = chunk + output
-            }
+            if !chunk.isEmpty { output = chunk + output }
         }
     }
 
@@ -199,6 +206,20 @@ struct ContentView: View {
                 DispatchQueue.main.async { self.log(out); self.busy = false }
             } catch {
                 DispatchQueue.main.async { self.log("Error: \(error)"); self.busy = false }
+            }
+        }
+    }
+
+    private func runApi(_ endpoint: String) {
+        busy = true
+        log("$ api \(endpoint)")
+        guard let node = node else { log("no node"); busy = false; return }
+        Task {
+            do {
+                let out = try await node.apiCall(endpoint)
+                await MainActor.run { self.log(out); self.busy = false }
+            } catch {
+                await MainActor.run { self.log("Error: \(error)"); self.busy = false }
             }
         }
     }
