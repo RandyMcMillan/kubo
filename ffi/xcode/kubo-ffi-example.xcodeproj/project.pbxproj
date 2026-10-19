@@ -237,7 +237,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export PATH=/opt/homebrew/bin:$PATH; cd $SRCROOT/../swift && make build && if [ ! -d $SRCROOT/../../webui ]; then git clone --depth=1 https://github.com/RandyMcMillan/ipfs-webui.git $SRCROOT/../../webui; fi && cd $SRCROOT/../../webui && (npm install --silent 2>/dev/null || true) && npm run build 2>&1 | tail -3 && rm -rf $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui && mkdir -p $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui && rsync -a $SRCROOT/../../webui/build/ $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui/ && rm -rf $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/kubo && git clone --depth=1 $SRCROOT/../.. $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/kubo\n";
+			shellScript = "export PATH=/opt/homebrew/bin:$PATH; cd $SRCROOT/../swift && make build && if [ ! -d $SRCROOT/../../webui ]; then git clone --depth=1 $SRCROOT/../../webui $SRCROOT/../../webui; fi && cd $SRCROOT/../../webui && (npm install --silent 2>/dev/null || true) && npm run build 2>&1 | tail -3 && rm -rf $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui && mkdir -p $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui && rsync -a $SRCROOT/../../webui/build/ $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/webui/ && rm -rf $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/kubo && git clone --depth=1 $SRCROOT/../.. $BUILT_PRODUCTS_DIR/kubo-ffi-example.app/Contents/Resources/kubo\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
