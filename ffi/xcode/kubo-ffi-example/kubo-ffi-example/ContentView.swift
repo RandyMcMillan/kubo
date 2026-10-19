@@ -113,7 +113,7 @@ struct ContentView: View {
                 }
             }
         }
-        .onAppear { startLogPolling() }
+        .onAppear { startLogPolling(); autoStart() }
     }
 
     @ViewBuilder
@@ -172,6 +172,42 @@ struct ContentView: View {
     private func log(_ s: String) {
         let ts = ISO8601DateFormatter().string(from: Date())
         output = "[\(ts)] \(s)\n" + output
+    }
+
+    private func autoStart() {
+        DispatchQueue.global().async {
+            do {
+                if !FileManager.default.fileExists(atPath: repoPath) { try Kubo.initRepo(repoPath) }
+                let n = try Kubo.Node(repoPath: repoPath, online: true)
+                let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
+                let parts = apiUrl.split(separator: "/")
+                var host = "127.0.0.1"; var port = "5001"; var i = 0
+                while i < parts.count {
+                    if parts[i] == "ip4" && i + 1 < parts.count { host = String(parts[i+1]) }
+                    if parts[i] == "tcp" && i + 1 < parts.count { port = String(parts[i+1]) }
+                    i += 1
+                }
+                if let res = Bundle.main.resourcePath {
+                    let webuiDir = res + "/webui"
+                    if FileManager.default.fileExists(atPath: webuiDir) {
+                        n.addStatic(prefix: "/webui", dir: webuiDir)
+                    }
+                }
+                DispatchQueue.main.async {
+                    self.node = n
+                    self.peerId = n.peerId ?? ""
+                    self.addrs = n.listeningAddrs ?? ""
+                    self.webUrl = "http://\(host):\(port)/webui"
+                    self.log("[auto] node started peer=\(self.peerId)")
+                    self.log("[auto] listening: \(self.addrs)")
+                    self.log("[auto] webui: \(self.webUrl)")
+                    self.startPeerPolling()
+                    self.dialBootstrap()
+                }
+            } catch {
+                DispatchQueue.main.async { self.log("Error: \(error)") }
+            }
+        }
     }
 
     private func startLogPolling() {
