@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var peerCount: Int = 0
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
+    @State private var bootstraps: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -40,7 +41,8 @@ struct ContentView: View {
             }
             HStack {
                 Button("Swarm Peers") { run("swarm peers") }
-                Button("Bootstrap") { run("bootstrap list") }
+                Button("Bootstrap List") { run("bootstrap list") }
+                Button("Dial Bootstrap") { dialBootstrap() }
                 Button("ID") { run("id") }
             }
             HStack {
@@ -51,12 +53,12 @@ struct ContentView: View {
             ScrollView {
                 Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 280)
+            .frame(minHeight: 300)
             .background(Color.black.opacity(0.05))
             .cornerRadius(8)
         }
         .padding()
-        .frame(minWidth: 680, minHeight: 620)
+        .frame(minWidth: 720, minHeight: 640)
         .onAppear { startLogPolling() }
     }
 
@@ -76,8 +78,8 @@ struct ContentView: View {
 
     private func startPeerPolling() {
         peerTimer?.invalidate()
-        peerTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
-            guard let n = node else { return }
+        peerTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+            guard node != nil else { return }
             DispatchQueue.global().async {
                 let k = Kubo(repoPath: repoPath)
                 if let out = try? k.run("swarm peers") {
@@ -87,6 +89,12 @@ struct ContentView: View {
                         if count > 0 {
                             self.log("peers(\(count)):\n\(out)")
                         }
+                    }
+                }
+                // Also show bootstrap peers once
+                if self.bootstraps.isEmpty {
+                    if let b = try? k.run("bootstrap list") {
+                        DispatchQueue.main.async { self.bootstraps = b; self.log("bootstrap:\n\(b)") }
                     }
                 }
             }
@@ -125,6 +133,31 @@ struct ContentView: View {
         addrs = ""
         peerCount = 0
         log("[node stopped]")
+    }
+
+    private func dialBootstrap() {
+        busy = true
+        log("$ dialing bootstrap peers")
+        DispatchQueue.global().async {
+            let k = Kubo(repoPath: repoPath)
+            // Fetch bootstrap list
+            let bs = (try? k.run("bootstrap list")) ?? ""
+            let peers = bs.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            for p in peers {
+                if let out = try? k.run("swarm connect \(p)") {
+                    DispatchQueue.main.async { self.log("connect \(p): \(out)") }
+                } else {
+                    DispatchQueue.main.async { self.log("connect \(p): failed") }
+                }
+            }
+            // Show result
+            if let out = try? k.run("swarm peers") {
+                let count = out.split(separator: "\n").filter { !$0.isEmpty }.count
+                DispatchQueue.main.async { self.peerCount = count; self.log("peers(\(count)):\n\(out)"); self.busy = false }
+            } else {
+                DispatchQueue.main.async { self.busy = false }
+            }
+        }
     }
 
     private func run(_ cmd: String) {
