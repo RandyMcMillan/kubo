@@ -68,7 +68,7 @@ struct ContentView: View {
     }
 
     private func autoStart() {
-        let logFile = "/tmp/kubo-xcode.log"
+        let logFile = FileManager.default.currentDirectoryPath + "/kubo-xcode.log"
         FileManager.default.createFile(atPath: logFile, contents: nil)
         func w(_ s: String) { if let h = FileHandle(forWritingAtPath: logFile) { h.seekToEndOfFile(); h.write((s+"\n").data(using: .utf8)!); h.closeFile() } }
         w("AUTO: starting node")
