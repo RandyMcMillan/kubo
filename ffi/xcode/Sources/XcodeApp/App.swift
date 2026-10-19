@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 import Kubo
 
 @main
@@ -22,44 +23,55 @@ struct ContentView: View {
     @State private var peerCount: Int = 0
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
-    @State private var bootstraps: String = ""
+    @State private var webUrl: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Kubo IPFS FFI Demo").font(.title)
-            Text("Kubo version: \(version)").font(.caption)
-            TextField("Repo path", text: $repoPath)
-            HStack {
-                Button("Init Repo") { run("init") }
-                Button("Start Node (online)") { startNode() }
-                Button("Stop Node") { stopNode() }
+        HSplitView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Kubo IPFS FFI Demo").font(.title)
+                Text("Kubo version: \(version)").font(.caption)
+                TextField("Repo path", text: $repoPath)
+                HStack {
+                    Button("Init Repo") { run("init") }
+                    Button("Start Node (online)") { startNode() }
+                    Button("Stop Node") { stopNode() }
+                }
+                if !peerId.isEmpty {
+                    Text("Peer ID: \(peerId)").font(.caption)
+                    Text("Listening: \(addrs)").font(.caption)
+                    Text("Connected peers: \(peerCount)").font(.caption).bold()
+                }
+                HStack {
+                    Button("Swarm Peers") { showPeers() }
+                    Button("Bootstrap") { dialBootstrap() }
+                    Button("ID") { run("id") }
+                }
+                HStack {
+                    TextField("Command", text: $command)
+                    Button("Run") { run(command) }.disabled(busy)
+                }
+                if busy { ProgressView().scaleEffect(0.7) }
+                ScrollView {
+                    Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(minHeight: 200)
+                .background(Color.black.opacity(0.05))
+                .cornerRadius(8)
             }
-            if !peerId.isEmpty {
-                Text("Peer ID: \(peerId)").font(.caption)
-                Text("Listening: \(addrs)").font(.caption)
-                Text("Connected peers: \(peerCount)").font(.caption).bold()
+            .padding()
+            .frame(minWidth: 460)
+
+            VStack {
+                if !webUrl.isEmpty {
+                    WebView(urlString: webUrl)
+                } else {
+                    Text("WebUI will appear here after starting a node").foregroundColor(.secondary)
+                }
             }
-            HStack {
-                Button("Swarm Peers") { showPeers() }
-                Button("Bootstrap List") { run("bootstrap list") }
-                Button("Dial Bootstrap") { dialBootstrap() }
-                Button("ID") { run("id") }
-            }
-            HStack {
-                TextField("Command", text: $command)
-                Button("Run") { run(command) }.disabled(busy)
-            }
-            if busy { ProgressView().scaleEffect(0.7) }
-            ScrollView {
-                Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(minHeight: 300)
-            .background(Color.black.opacity(0.05))
-            .cornerRadius(8)
+            .frame(minWidth: 400)
         }
-        .padding()
-        .frame(minWidth: 720, minHeight: 640)
-        .onAppear { startLogPolling(); autoStart() }
+        .frame(minWidth: 900, minHeight: 600)
+        .onAppear { startLogPolling() }
     }
 
     private func log(_ s: String) {
@@ -73,37 +85,8 @@ struct ContentView: View {
         }
     }
 
-    private func autoStart() {
-        let logFile = FileManager.default.currentDirectoryPath + "/kubo-xcode.log"
-        FileManager.default.createFile(atPath: logFile, contents: nil)
-        func w(_ s: String) { if let h = FileHandle(forWritingAtPath: logFile) { h.seekToEndOfFile(); h.write((s+"\n").data(using: .utf8)!); h.closeFile() } }
-        w("AUTO: starting node")
-        DispatchQueue.global().async {
-            do {
-                if !FileManager.default.fileExists(atPath: repoPath) {
-                    try Kubo.initRepo(repoPath)
-                }
-                let n = try Kubo.Node(repoPath: repoPath, online: true)
-                DispatchQueue.main.async {
-                    self.node = n
-                    self.peerId = n.peerId ?? ""
-                    self.addrs = n.listeningAddrs ?? ""
-                    w("AUTO: peer=\(self.peerId)")
-                    w("AUTO: addrs=\(self.addrs)")
-                    self.log("[auto] node started peer=\(self.peerId)")
-                    self.log("[auto] listening: \(self.addrs)")
-                    self.startPeerPolling()
-                    // dial bootstrap to show network activity
-                    self.dialBootstrap()
-                }
-            } catch {
-                DispatchQueue.main.async { w("AUTO ERROR: \(error)"); self.log("Error: \(error)") }
-            }
-        }
-    }
-
     private func startLogPolling() {
-        logTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             let chunk = Kubo.getLogs()
             if !chunk.isEmpty {
                 output = chunk + output
@@ -112,14 +95,13 @@ struct ContentView: View {
     }
 
     private func startPeerPolling() {
-        peerTimer?.invalidate()
-        peerTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+        Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
             guard let n = self.node else { return }
             let peers = n.swarmPeers()
             DispatchQueue.main.async {
                 self.peerCount = peers.count
                 if peers.count > 0 {
-                    self.log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
+                    self.log("peers(\(peers.count))")
                 }
             }
         }
@@ -133,14 +115,27 @@ struct ContentView: View {
                     try Kubo.initRepo(repoPath)
                 }
                 let n = try Kubo.Node(repoPath: repoPath, online: true)
+                let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
                 DispatchQueue.main.async {
                     self.node = n
                     self.peerId = n.peerId ?? ""
                     self.addrs = n.listeningAddrs ?? ""
+                    let parts = apiUrl.split(separator: "/")
+                    var host = "127.0.0.1"
+                    var port = "5001"
+                    var i = 0
+                    while i < parts.count {
+                        if parts[i] == "ip4" && i + 1 < parts.count { host = String(parts[i+1]) }
+                        if parts[i] == "tcp" && i + 1 < parts.count { port = String(parts[i+1]) }
+                        i += 1
+                    }
+                    self.webUrl = "http://\(host):\(port)/webui"
                     self.log("[node started] peer=\(self.peerId)")
                     self.log("listening: \(self.addrs)")
+                    self.log("webui: \(self.webUrl)")
                     self.busy = false
                     self.startPeerPolling()
+                    self.dialBootstrap()
                 }
             } catch {
                 DispatchQueue.main.async { self.log("Error: \(error)"); self.busy = false }
@@ -149,13 +144,12 @@ struct ContentView: View {
     }
 
     private func stopNode() {
-        peerTimer?.invalidate()
-        peerTimer = nil
         node?.stop()
         node = nil
         peerId = ""
         addrs = ""
         peerCount = 0
+        webUrl = ""
         log("[node stopped]")
     }
 
@@ -169,7 +163,6 @@ struct ContentView: View {
             }
             let bootstraps = [
                 "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-                "/ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",
             ]
             for p in bootstraps {
                 let ok = n.connect(p)
@@ -178,7 +171,7 @@ struct ContentView: View {
             let peers = n.swarmPeers()
             DispatchQueue.main.async {
                 self.peerCount = peers.count
-                self.log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
+                self.log("peers(\(peers.count))")
                 self.busy = false
             }
         }
@@ -202,6 +195,22 @@ struct ContentView: View {
             } catch {
                 DispatchQueue.main.async { self.log("Error: \(error)"); self.busy = false }
             }
+        }
+    }
+}
+
+struct WebView: NSViewRepresentable {
+    let urlString: String
+    func makeNSView(context: Context) -> WKWebView {
+        let wv = WKWebView()
+        if let url = URL(string: urlString) {
+            wv.load(URLRequest(url: url))
+        }
+        return wv
+    }
+    func updateNSView(_ nsView: WKWebView, context: Context) {
+        if let url = URL(string: urlString), nsView.url != url {
+            nsView.load(URLRequest(url: url))
         }
     }
 }
