@@ -1,14 +1,22 @@
 import SwiftUI
 import Kubo
 
-print("Kubo version: \(Kubo.version())")
+@main
+struct KuboXcodeApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
 
 struct ContentView: View {
-    @State private var version: String = Kubo.version()
+    @State private var version: String = ""
     @State private var repoPath: String = FileManager.default.temporaryDirectory.appendingPathComponent("kubo-xcode-demo").path
-    @State private var command: String = "version"
+    @State private var command: String = "id"
     @State private var output: String = ""
     @State private var busy: Bool = false
+    @State private var peerAddr: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,6 +27,11 @@ struct ContentView: View {
                 Button("Init Repo") { run("init") }
                 Button("ID") { run("id") }
                 Button("Version") { run("version") }
+                Button("Swarm Addrs") { run("swarm addrs listen") }
+            }
+            HStack {
+                TextField("Peer multiaddr to connect", text: $peerAddr)
+                Button("Connect") { run("swarm connect \(peerAddr)") }
             }
             HStack {
                 TextField("Command", text: $command)
@@ -28,48 +41,32 @@ struct ContentView: View {
             ScrollView {
                 Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 200)
+            .frame(minHeight: 240)
             .background(Color.black.opacity(0.05))
             .cornerRadius(8)
         }
         .padding()
-        .frame(minWidth: 520, minHeight: 420)
+        .frame(minWidth: 600, minHeight: 520)
+        .onAppear { version = Kubo.version() }
     }
 
     private func run(_ cmd: String) {
         busy = true
-        output = ""
+        let ts = ISO8601DateFormatter().string(from: Date())
+        output = "[\(ts)] $ \(cmd)\n" + output
         DispatchQueue.global().async {
             do {
                 if cmd.trimmingCharacters(in: .whitespaces) == "init" {
                     try Kubo.initRepo(repoPath)
-                    DispatchQueue.main.async { output = "repo initialized at \(repoPath)"; busy = false }
+                    DispatchQueue.main.async { output = "[done] repo initialized at \(repoPath)\n" + output; busy = false }
                     return
                 }
                 let k = Kubo(repoPath: repoPath)
                 let out = try k.run(cmd)
-                DispatchQueue.main.async { output = out; busy = false }
+                DispatchQueue.main.async { output = out + "\n" + output; busy = false }
             } catch {
-                DispatchQueue.main.async { output = "Error: \(error)"; busy = false }
+                DispatchQueue.main.async { output = "Error: \(error)\n" + output; busy = false }
             }
         }
-    }
-}
-
-// SwiftUI app entry point
-import AppKit
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.run()
-
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 480),
-                              styleMask: [.titled, .closable, .resizable],
-                              backing: .buffered, defer: false)
-        window.title = "Kubo IPFS FFI Demo"
-        window.contentView = NSHostingView(rootView: ContentView())
-        window.makeKeyAndOrderFront(nil)
     }
 }
