@@ -117,6 +117,16 @@ func RunEmbeddedMigrations(ctx context.Context, targetVer int, ipfsDir string, a
 	}
 	defer lk.Close()
 
+	return runEmbeddedMigrationsUnlocked(ctx, targetVer, ipfsDir, allowDowngrade)
+}
+
+// runEmbeddedMigrationsUnlocked performs embedded migrations assuming the repo lock is already held.
+func runEmbeddedMigrationsUnlocked(ctx context.Context, targetVer int, ipfsDir string, allowDowngrade bool) error {
+	ipfsDir, err := CheckIpfsDir(ipfsDir)
+	if err != nil {
+		return err
+	}
+
 	fromVer, err := RepoVersion(ipfsDir)
 	if err != nil {
 		return fmt.Errorf("could not get repo version: %w", err)

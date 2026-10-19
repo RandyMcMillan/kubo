@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	lockfile "github.com/ipfs/go-fs-lock"
 	config "github.com/ipfs/kubo/config"
 )
 
@@ -341,6 +342,18 @@ func fetchMigrations(ctx context.Context, fetcher Fetcher, needed []string, dest
 func RunHybridMigrations(ctx context.Context, targetVer int, ipfsDir string, allowDowngrade bool) error {
 	const embeddedMigrationsMinVersion = 16
 
+	ipfsDir, err := CheckIpfsDir(ipfsDir)
+	if err != nil {
+		return err
+	}
+
+	// Acquire lock once for the whole hybrid migration to prevent concurrent access
+	lk, err := lockfile.Lock(ipfsDir, "repo.lock")
+	if err != nil {
+		return fmt.Errorf("failed to acquire repo lock: %w", err)
+	}
+	defer lk.Close()
+
 	// Get current repo version
 	currentVer, err := RepoVersion(ipfsDir)
 	if err != nil {
@@ -366,7 +379,7 @@ func RunHybridMigrations(ctx context.Context, targetVer int, ipfsDir string, all
 
 	// Case 1: Pure embedded migration (both current and target ≥ 16)
 	if !needsExternal && needsEmbedded {
-		return RunEmbeddedMigrations(ctx, targetVer, ipfsDir, allowDowngrade)
+		return runEmbeddedMigrationsUnlocked(ctx, targetVer, ipfsDir, allowDowngrade)
 	}
 
 	// For cases requiring external migrations, we check if migration binaries
@@ -454,7 +467,7 @@ func RunHybridMigrations(ctx context.Context, targetVer int, ipfsDir string, all
 
 		// Phase 2: Use embedded migrations for v16+
 		logger.Printf("Phase 2: Embedded migration from v%d to v%d", embeddedMigrationsMinVersion, targetVer)
-		err = RunEmbeddedMigrations(ctx, targetVer, ipfsDir, allowDowngrade)
+		err = runEmbeddedMigrationsUnlocked(ctx, targetVer, ipfsDir, allowDowngrade)
 		if err != nil {
 			return fmt.Errorf("embedded migration phase failed: %w", err)
 		}
@@ -471,7 +484,7 @@ func RunHybridMigrations(ctx context.Context, targetVer int, ipfsDir string, all
 	// Phase 1: Use embedded migrations from current version down to v16 (if needed)
 	if currentVer > embeddedMigrationsMinVersion {
 		logger.Printf("Phase 1: Embedded downgrade from v%d to v%d", currentVer, embeddedMigrationsMinVersion)
-		err = RunEmbeddedMigrations(ctx, embeddedMigrationsMinVersion, ipfsDir, allowDowngrade)
+		err = runEmbeddedMigrationsUnlocked(ctx, embeddedMigrationsMinVersion, ipfsDir, allowDowngrade)
 		if err != nil {
 			return fmt.Errorf("embedded downgrade phase failed: %w", err)
 		}
