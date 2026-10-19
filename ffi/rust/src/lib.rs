@@ -5,6 +5,7 @@ extern "C" {
     fn kubo_ffi_last_error() -> *mut c_char;
     fn kubo_ffi_free_string(s: *mut c_char);
     fn kubo_ffi_free_buffer(buf: *mut u8);
+    fn kubo_get_logs() -> *mut c_char;
     fn kubo_init_repo(repo_path: *const c_char) -> i64;
     fn kubo_node_start(repo_path: *const c_char, online: u8) -> u64;
     fn kubo_node_stop(handle: u64) -> i64;
@@ -16,6 +17,19 @@ extern "C" {
 pub fn version() -> String {
     unsafe {
         let p = kubo_version();
+        if p.is_null() {
+            return String::new();
+        }
+        let s = CStr::from_ptr(p).to_string_lossy().to_string();
+        kubo_ffi_free_string(p);
+        s
+    }
+}
+
+/// Returns accumulated Go log output since the last call.
+pub fn get_logs() -> String {
+    unsafe {
+        let p = kubo_get_logs();
         if p.is_null() {
             return String::new();
         }

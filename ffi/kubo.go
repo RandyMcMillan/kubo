@@ -18,6 +18,9 @@ import (
 	"sync"
 	"unsafe"
 
+	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
@@ -44,6 +47,54 @@ import (
 //export kubo_version
 func kubo_version() *C.char {
 	return C.CString(ipfs.CurrentVersionNumber)
+}
+
+// ---------------------------------------------------------------------------
+// Log capture
+// ---------------------------------------------------------------------------
+
+var (
+	logBufMu sync.Mutex
+	logBuf   strings.Builder
+)
+
+type logWriter struct{}
+
+func (logWriter) Write(p []byte) (int, error) {
+	logBufMu.Lock()
+	defer logBufMu.Unlock()
+	logBuf.Write(p)
+	return len(p), nil
+}
+
+func init() {
+	encCfg := zapcore.EncoderConfig{
+		TimeKey:        "t",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(encCfg),
+		zapcore.AddSync(logWriter{}),
+		zapcore.DebugLevel,
+	)
+	logging.SetPrimaryCore(core)
+}
+
+//export kubo_get_logs
+func kubo_get_logs() *C.char {
+	logBufMu.Lock()
+	defer logBufMu.Unlock()
+	s := logBuf.String()
+	logBuf.Reset()
+	return C.CString(s)
 }
 
 // ---------------------------------------------------------------------------

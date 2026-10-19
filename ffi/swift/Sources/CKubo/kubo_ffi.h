@@ -142,6 +142,7 @@ extern GoInt64 kubo_git_repo_blob_read(GoUint64 handle, char* hash, uint8_t** ou
 extern char* kubo_git_repo_status(GoUint64 handle);
 extern char* kubo_git_repo_diff_trees(GoUint64 handle, char* old_hash, char* new_hash);
 extern char* kubo_version(void);
+extern char* kubo_get_logs(void);
 extern GoInt64 kubo_init_repo(char* repoPath);
 extern GoUint64 kubo_node_start(char* repoPath, uint8_t online);
 extern GoInt64 kubo_node_stop(GoUint64 handle);

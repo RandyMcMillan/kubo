@@ -98,4 +98,11 @@ public struct Kubo {
         kubo_ffi_free_string(p)
         return s
     }
+
+    public static func getLogs() -> String {
+        guard let p = kubo_get_logs() else { return "" }
+        let s = String(cString: p)
+        kubo_ffi_free_string(p)
+        return s
+    }
 }

@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var node: Kubo.Node? = nil
     @State private var peerId: String = ""
     @State private var addrs: String = ""
+    @State private var logTimer: Timer? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -46,6 +47,7 @@ struct ContentView: View {
         }
         .padding()
         .frame(minWidth: 640, minHeight: 560)
+        .onAppear { startLogPolling() }
     }
 
     private func log(_ s: String) { output = s + "\n" + output }
@@ -78,6 +80,15 @@ struct ContentView: View {
         peerId = ""
         addrs = ""
         log("[node stopped]")
+    }
+
+    private func startLogPolling() {
+        logTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            let chunk = Kubo.getLogs()
+            if !chunk.isEmpty {
+                output = chunk + output
+            }
+        }
     }
 
     private func run(_ cmd: String) {
