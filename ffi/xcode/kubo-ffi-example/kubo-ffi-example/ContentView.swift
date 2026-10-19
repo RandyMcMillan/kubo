@@ -92,6 +92,12 @@ struct ContentView: View {
                             .padding(8)
                         }
 
+                        if !webUrl.isEmpty && selectedSection == .webui {
+                            GroupBox("WebUI") {
+                                WebView(urlString: webUrl).frame(minHeight: 360)
+                            }
+                        }
+
                         // Log terminal (foldable)
                         DisclosureGroup("Log", isExpanded: $logExpanded) {
                             ScrollView {
@@ -102,12 +108,6 @@ struct ContentView: View {
                             .foregroundColor(.green)
                             .cornerRadius(6)
                             .padding(8)
-                        }
-
-                        if !webUrl.isEmpty && selectedSection == .webui {
-                            GroupBox("WebUI") {
-                                WebView(urlString: webUrl).frame(minHeight: 360)
-                            }
                         }
                     }
                     .padding()
