@@ -200,9 +200,9 @@ struct ContentView: View {
                     self.webUrl = "http://\(host):\(port)/webui/"
                     self.selectedSection = .webui
                     // Add a welcome file to MFS so the WebUI Files page shows content
-                    let tmpFile = self.repoPath + "/welcome.txt"
-                    try? "Hello from Kubo FFI demo".write(toFile: tmpFile, atomically: true, encoding: .utf8)
-                    if let out = try? n.run("add --to-files /welcome.txt \(tmpFile)") {
+                    let tmpFile = self.repoPath + "/README.md"
+                    try? "# Kubo FFI Demo\n\nHello from Kubo FFI.".write(toFile: tmpFile, atomically: true, encoding: .utf8)
+                    if let out = try? n.run("add --to-files /README.md \(tmpFile)") {
                         self.log("mfs: \(out)")
                     }
                     // Add the bundled kubo repo to MFS
