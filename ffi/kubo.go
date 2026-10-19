@@ -205,25 +205,21 @@ var (
 	nextHandle uint64 = 1
 )
 
-//export kubo_node_start
-func kubo_node_start(repoPath *C.char, online C.uint8_t) uint64 {
+// startNodeInternal is the string-based implementation used by tests and exports.
+func startNodeInternal(repoPath string, online bool) (uint64, error) {
 	if err := ensurePlugins(); err != nil {
-		setError(err)
-		return 0
+		return 0, err
 	}
 
-	path := C.GoString(repoPath)
-
-	repo, err := fsrepo.Open(path)
+	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
-		setError(fmt.Errorf("open repo: %w", err))
-		return 0
+		return 0, fmt.Errorf("open repo: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cfg := &core.BuildCfg{
-		Online: online != 0,
+		Online: online,
 		Repo:   repo,
 	}
 	if !cfg.Online {
@@ -233,16 +229,16 @@ func kubo_node_start(repoPath *C.char, online C.uint8_t) uint64 {
 	n, err := core.NewNode(ctx, cfg)
 	if err != nil {
 		cancel()
-		setError(fmt.Errorf("new node: %w", err))
-		return 0
+		repo.Close()
+		return 0, fmt.Errorf("new node: %w", err)
 	}
 
 	api, err := coreapi.NewCoreAPI(n)
 	if err != nil {
 		n.Close()
 		cancel()
-		setError(fmt.Errorf("core api: %w", err))
-		return 0
+		repo.Close()
+		return 0, fmt.Errorf("core api: %w", err)
 	}
 
 	h := &nodeHandle{
@@ -258,8 +254,18 @@ func kubo_node_start(repoPath *C.char, online C.uint8_t) uint64 {
 	nodes[handle] = h
 	nodesMu.Unlock()
 
+	return handle, nil
+}
+
+//export kubo_node_start
+func kubo_node_start(repoPath *C.char, online C.uint8_t) uint64 {
+	h, err := startNodeInternal(C.GoString(repoPath), online != 0)
+	if err != nil {
+		setError(err)
+		return 0
+	}
 	setError(nil)
-	return handle
+	return h
 }
 
 //export kubo_node_stop
