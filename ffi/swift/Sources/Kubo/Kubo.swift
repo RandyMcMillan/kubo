@@ -53,4 +53,49 @@ public struct Kubo {
         kubo_ffi_free_string(p)
         return s
     }
+
+    // MARK: - Node lifecycle (typed)
+    public class Node {
+        private let handle: UInt64
+        public let repoPath: String
+
+        public init(repoPath: String, online: Bool) throws {
+            self.repoPath = repoPath
+            let h = repoPath.withCString { rp in
+                kubo_node_start(UnsafeMutablePointer(mutating: rp), online ? 1 : 0)
+            }
+            if h == 0 {
+                let msg = Kubo.lastError() ?? "node start failed"
+                throw KuboError.commandFailed(msg)
+            }
+            self.handle = h
+        }
+
+        public var peerId: String? {
+            guard let p = kubo_node_peer_id(handle) else { return nil }
+            let s = String(cString: p)
+            kubo_ffi_free_string(p)
+            return s
+        }
+
+        public var listeningAddrs: String? {
+            guard let p = kubo_node_listening_addrs(handle) else { return nil }
+            let s = String(cString: p)
+            kubo_ffi_free_string(p)
+            return s
+        }
+
+        public func stop() {
+            kubo_node_stop(handle)
+        }
+
+        deinit { kubo_node_stop(handle) }
+    }
+
+    public static func lastError() -> String? {
+        guard let p = kubo_ffi_last_error() else { return nil }
+        let s = String(cString: p)
+        kubo_ffi_free_string(p)
+        return s
+    }
 }
