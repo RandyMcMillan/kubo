@@ -4,10 +4,9 @@ lib:
 	cd ../swift && make build
 
 build: lib
-	swift build -Xlinker -L../swift -Xlinker -lkubo_ffi \
-	  -Xlinker -framework -Xlinker Security \
-	  -Xlinker -framework -Xlinker CoreFoundation \
-	  -Xlinker -lresolv -Xlinker -lpthread -Xlinker -ldl
+	xcodebuild -scheme KuboXcode -destination 'platform=macOS' build
+
+xcodebuild: build
 
 run: build
 	swift run -Xlinker -L../swift -Xlinker -lkubo_ffi \

@@ -11,7 +11,12 @@ let package = Package(
         .executableTarget(
             name: "XcodeApp",
             dependencies: [.product(name: "Kubo", package: "swift")],
-            path: "Sources/XcodeApp"
+            path: "Sources/XcodeApp",
+            linkerSettings: [
+                .unsafeFlags(["-L", "../swift", "-lkubo_ffi",
+                             "-framework", "Security", "-framework", "CoreFoundation",
+                             "-lresolv", "-lpthread", "-ldl"]),
+            ]
         ),
     ]
 )
