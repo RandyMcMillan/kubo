@@ -1,31 +1,46 @@
 # Kubo Xcode
 
-A sample Xcode/SwiftPM project that consumes the `Kubo` Swift package
-(`../swift`), which wraps the Kubo C FFI layer.
+A SwiftPM package (openable directly in Xcode) demonstrating the Kubo FFI
+with a SwiftUI GUI, node lifecycle, peer networking, and an embedded WebUI.
 
-## Prerequisites
+## Open in Xcode (recommended for signing)
 
-Build the FFI archive first:
+1. Open Xcode → **File → Open…** → select `ffi/xcode/Package.swift`
+   (or open the `ffi/xcode` folder).
+2. Xcode resolves the local `../swift` package automatically.
+3. Select the `XcodeApp` target, set your **Signing & Capabilities** team
+   in the target settings, and build/run (⌘R).
+
+This gives you full access to Xcode's signing, entitlements, and debugger.
+
+## Build from the command line
+
+```sh
+cd ffi/swift && make build          # build the Go FFI archive
+cd ../xcode && make build          # swift build
+make app                           # build a signed .app bundle
+make run                           # build + open the .app
+```
+
+Or with xcodebuild directly:
 
 ```sh
 cd ffi/swift && make build
+cd ../xcode && xcodebuild -scheme KuboXcode -destination 'platform=macOS' build
 ```
 
-## Build
+## Entitlements
 
-```sh
-cd ffi/xcode && swift build \
-  -Xlinker -L../swift -Xlinker -lkubo_ffi \
-  -Xlinker -framework -Xlinker Security \
-  -Xlinker -framework -Xlinker CoreFoundation \
-  -Xlinker -lresolv -Xlinker -lpthread -Xlinker -ldl
-```
-
-Or open `Package.swift` in Xcode and build the `XcodeApp` target.
+`Entitlements.plist` requests network client/server access and disables
+the app sandbox. Adjust in Xcode's Signing & Capabilities tab as needed.
 
 ## Notes
 
 - The archive `libkubo_ffi.a` is produced by `ffi/swift/Makefile` and is
-  gitignored; rebuild it after changing the Go FFI sources.
+  gitignored; rebuild it after changing Go FFI sources.
 - The package depends on `../swift` (relative path), so keep the directory
   layout intact.
+- The WebContent process (WKWebView) may show sandbox warnings on macOS 26
+  with ad-hoc signing; open the logged WebUI URL in a browser if needed.
+EOF
+echo done
