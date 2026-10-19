@@ -89,6 +89,20 @@ public struct Kubo {
             kubo_node_stop(handle)
         }
 
+        public func swarmPeers() -> [String] {
+            guard let p = kubo_swarm_peers(handle) else { return [] }
+            let s = String(cString: p)
+            kubo_ffi_free_string(p)
+            return s.split(separator: "\n").map { String($0) }.filter { !$0.isEmpty }
+        }
+
+        public func connect(_ addr: String) -> Bool {
+            let rc = addr.withCString { a in
+                kubo_node_connect(handle, UnsafeMutablePointer(mutating: a))
+            }
+            return rc == 0
+        }
+
         deinit { kubo_node_stop(handle) }
     }
 

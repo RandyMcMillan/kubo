@@ -40,7 +40,7 @@ struct ContentView: View {
                 Text("Connected peers: \(peerCount)").font(.caption).bold()
             }
             HStack {
-                Button("Swarm Peers") { run("swarm peers") }
+                Button("Swarm Peers") { showPeers() }
                 Button("Bootstrap List") { run("bootstrap list") }
                 Button("Dial Bootstrap") { dialBootstrap() }
                 Button("ID") { run("id") }
@@ -65,6 +65,12 @@ struct ContentView: View {
     private func log(_ s: String) {
         let ts = ISO8601DateFormatter().string(from: Date())
         output = "[\(ts)] \(s)\n" + output
+        let logFile = FileManager.default.currentDirectoryPath + "/kubo-xcode.log"
+        if let h = FileHandle(forWritingAtPath: logFile) {
+            h.seekToEndOfFile()
+            h.write(("[\(ts)] \(s)\n").data(using: .utf8)!)
+            h.closeFile()
+        }
     }
 
     private func autoStart() {
@@ -108,23 +114,12 @@ struct ContentView: View {
     private func startPeerPolling() {
         peerTimer?.invalidate()
         peerTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
-            guard node != nil else { return }
-            DispatchQueue.global().async {
-                let k = Kubo(repoPath: repoPath)
-                if let out = try? k.run("swarm peers") {
-                    let count = out.split(separator: "\n").filter { !$0.isEmpty }.count
-                    DispatchQueue.main.async {
-                        self.peerCount = count
-                        if count > 0 {
-                            self.log("peers(\(count)):\n\(out)")
-                        }
-                    }
-                }
-                // Also show bootstrap peers once
-                if self.bootstraps.isEmpty {
-                    if let b = try? k.run("bootstrap list") {
-                        DispatchQueue.main.async { self.bootstraps = b; self.log("bootstrap:\n\(b)") }
-                    }
+            guard let n = self.node else { return }
+            let peers = n.swarmPeers()
+            DispatchQueue.main.async {
+                self.peerCount = peers.count
+                if peers.count > 0 {
+                    self.log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
                 }
             }
         }
@@ -168,25 +163,32 @@ struct ContentView: View {
         busy = true
         log("$ dialing bootstrap peers")
         DispatchQueue.global().async {
-            let k = Kubo(repoPath: repoPath)
-            // Fetch bootstrap list
-            let bs = (try? k.run("bootstrap list")) ?? ""
-            let peers = bs.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            for p in peers {
-                if let out = try? k.run("swarm connect \(p)") {
-                    DispatchQueue.main.async { self.log("connect \(p): \(out)") }
-                } else {
-                    DispatchQueue.main.async { self.log("connect \(p): failed") }
-                }
+            guard let n = self.node else {
+                DispatchQueue.main.async { self.log("no node running"); self.busy = false }
+                return
             }
-            // Show result
-            if let out = try? k.run("swarm peers") {
-                let count = out.split(separator: "\n").filter { !$0.isEmpty }.count
-                DispatchQueue.main.async { self.peerCount = count; self.log("peers(\(count)):\n\(out)"); self.busy = false }
-            } else {
-                DispatchQueue.main.async { self.busy = false }
+            let bootstraps = [
+                "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+                "/ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ",
+            ]
+            for p in bootstraps {
+                let ok = n.connect(p)
+                DispatchQueue.main.async { self.log("connect \(p): \(ok ? "OK" : "FAIL")") }
+            }
+            let peers = n.swarmPeers()
+            DispatchQueue.main.async {
+                self.peerCount = peers.count
+                self.log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
+                self.busy = false
             }
         }
+    }
+
+    private func showPeers() {
+        guard let n = node else { log("no node running"); return }
+        let peers = n.swarmPeers()
+        peerCount = peers.count
+        log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
     }
 
     private func run(_ cmd: String) {

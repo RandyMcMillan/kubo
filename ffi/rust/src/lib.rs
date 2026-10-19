@@ -10,6 +10,8 @@ extern "C" {
     fn kubo_node_start(repo_path: *const c_char, online: u8) -> u64;
     fn kubo_node_stop(handle: u64) -> i64;
     fn kubo_node_peer_id(handle: u64) -> *mut c_char;
+    fn kubo_swarm_peers(handle: u64) -> *mut c_char;
+    fn kubo_node_connect(handle: u64, addr: *const c_char) -> i64;
     fn kubo_run_command_line(repo_path: *const c_char, line: *const c_char) -> *mut c_char;
 }
 
@@ -87,6 +89,33 @@ impl Node {
             kubo_ffi_free_string(p);
             Some(s)
         }
+    }
+
+    pub fn listening_addrs(&self) -> Option<String> {
+        unsafe {
+            // not exported as separate; use run command
+            None
+        }
+    }
+
+    pub fn swarm_peers(&self) -> Vec<String> {
+        unsafe {
+            let p = kubo_swarm_peers(self.0);
+            if p.is_null() {
+                return vec![];
+            }
+            let s = CStr::from_ptr(p).to_string_lossy().to_string();
+            kubo_ffi_free_string(p);
+            s.lines().map(|l| l.to_string()).filter(|l| !l.is_empty()).collect()
+        }
+    }
+
+    pub fn connect(&self, addr: &str) -> bool {
+        let c = match CString::new(addr) {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+        unsafe { kubo_node_connect(self.0, c.as_ptr()) == 0 }
     }
 
     pub fn run(&self, command: &str) -> Result<String, String> {
