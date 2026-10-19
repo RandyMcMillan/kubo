@@ -85,12 +85,24 @@ ffi-shared:
 	cd ffi && $(GOCC) build -buildmode=c-shared -o libkubo.dylib .
 .PHONY: ffi-shared
 
+rust-ffi:
+	cd ffi/rust && cargo build
+.PHONY: rust-ffi
+
 rust-ffi-test:
 	cd test/rust-ffi-test && cargo run
 .PHONY: rust-ffi-test
 
 test_rust_ffi: rust-ffi-test
 .PHONY: test_rust_ffi
+
+swift-ffi:
+	cd ffi/swift && make build
+.PHONY: swift-ffi
+
+test_swift_ffi:
+	cd ffi/swift && make test
+.PHONY: test_swift_ffi
 
 distclean: clean
 	rm -rf $(DISTCLEAN)
@@ -148,8 +160,11 @@ help:
 	@echo '  mod_tidy     - Remove unused dependencies from go.mod files'
 	@echo '  ffi          - Build FFI Go package'
 	@echo '  ffi-shared   - Build FFI as C shared library'
+	@echo '  rust-ffi     - Build Rust FFI bindings'
 	@echo '  rust-ffi-test - Build and run Rust FFI integration tests'
 	@echo '  test_rust_ffi - Alias for rust-ffi-test'
+	@echo '  swift-ffi    - Build Swift FFI bindings'
+	@echo '  test_swift_ffi - Run Swift FFI tests'
 #	@echo '  dist_install - TODO: c.f. ./cmd/ipfs/dist/README.md'
 	@echo ''
 	@echo 'CLEANING TARGETS:'
@@ -171,5 +186,6 @@ help:
 	@echo '  test_sharness           - Run sharness tests'
 	@echo '  coverage                - Collect coverage info from unit tests and sharness'
 	@echo '  test_rust_ffi           - Run Rust FFI integration tests'
+	@echo '  test_swift_ffi          - Run Swift FFI tests'
 	@echo
 .PHONY: help

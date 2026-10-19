@@ -54,9 +54,21 @@ func cachedPlugins(repoPath string) (*loader.PluginLoader, error) {
 }
 
 func buildEnvCached(repoPath string, req *cmds.Request) (cmds.Environment, error) {
-	plugins, err := cachedPlugins(repoPath)
-	if err != nil {
-		return nil, err
+	var plugins *loader.PluginLoader
+	var err error
+	if gp := GlobalPlugins(); gp != nil {
+		plugins = gp
+	} else {
+		if err := ensurePlugins(); err != nil {
+			return nil, err
+		}
+		plugins = GlobalPlugins()
+	}
+	if plugins == nil {
+		plugins, err = cachedPlugins(repoPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &oldcmds.Context{
 		ConfigRoot: repoPath,

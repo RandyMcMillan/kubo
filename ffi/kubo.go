@@ -51,8 +51,9 @@ func kubo_version() *C.char {
 // ---------------------------------------------------------------------------
 
 var (
-	pluginsOnce sync.Once
-	pluginsErr  error
+	pluginsOnce   sync.Once
+	pluginsErr    error
+	globalPlugins *loader.PluginLoader
 )
 
 func ensurePlugins() error {
@@ -70,8 +71,14 @@ func ensurePlugins() error {
 			pluginsErr = fmt.Errorf("error injecting plugins: %w", err)
 			return
 		}
+		globalPlugins = plugins
 	})
 	return pluginsErr
+}
+
+// GlobalPlugins returns the process-wide plugin loader (may be nil before ensurePlugins).
+func GlobalPlugins() *loader.PluginLoader {
+	return globalPlugins
 }
 
 // ---------------------------------------------------------------------------

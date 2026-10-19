@@ -70,3 +70,9 @@ make test_rust_ffi
   buffers via `kubo_ffi_free_buffer`.
 - `kubo_ffi_last_error()` returns the last error message (if any) for the
   current thread.
+
+## Language bindings
+
+- `ffi/rust` — Safe Rust crate (`kubo-ffi`) wrapping the C FFI.
+- `ffi/swift` — Swift package (`Kubo`) wrapping the C FFI.
+- `test/rust-ffi-test` — Rust integration test runner.

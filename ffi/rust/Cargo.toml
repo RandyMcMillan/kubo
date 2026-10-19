@@ -1,0 +1,9 @@
+[package]
+name = "kubo-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust bindings to the Kubo C FFI layer"
+
+[dependencies]
+
+[build-dependencies]
