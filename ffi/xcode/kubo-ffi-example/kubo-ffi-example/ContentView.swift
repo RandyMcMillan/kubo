@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
     @State private var webUrl: String = ""
+    @State private var logExpanded: Bool = true
     @State private var selectedSection: SidebarSection = .status
 
     enum SidebarSection: String, CaseIterable, Identifiable {
@@ -91,8 +92,8 @@ struct ContentView: View {
                             .padding(8)
                         }
 
-                        // Log terminal
-                        GroupBox("Log") {
+                        // Log terminal (foldable)
+                        DisclosureGroup("Log", isExpanded: $logExpanded) {
                             ScrollView {
                                 Text(output).font(.system(.caption, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
                             }
