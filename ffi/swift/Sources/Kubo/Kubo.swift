@@ -90,6 +90,14 @@ public struct Kubo {
             kubo_node_stop(handle)
         }
 
+        public func addStatic(prefix: String, dir: String) {
+            _ = prefix.withCString { p in
+                dir.withCString { d in
+                    kubo_node_add_static(handle, UnsafeMutablePointer(mutating: p), UnsafeMutablePointer(mutating: d))
+                }
+            }
+        }
+
         public func startApi(_ multiaddr: String) -> String? {
             let p = multiaddr.withCString { a in
                 kubo_node_start_api(handle, UnsafeMutablePointer(mutating: a))

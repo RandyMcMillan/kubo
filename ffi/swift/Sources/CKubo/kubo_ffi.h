@@ -146,6 +146,7 @@ extern char* kubo_get_logs(void);
 extern GoInt64 kubo_init_repo(char* repoPath);
 extern GoUint64 kubo_node_start(char* repoPath, uint8_t online);
 extern GoInt64 kubo_node_stop(GoUint64 handle);
+extern GoInt64 kubo_node_add_static(GoUint64 handle, char* prefix, char* dir);
 extern char* kubo_node_start_api(GoUint64 handle, char* multiaddr);
 extern char* kubo_node_api_addrs(GoUint64 handle);
 extern char* kubo_node_peer_id(GoUint64 handle);

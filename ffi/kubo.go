@@ -196,6 +196,7 @@ type nodeHandle struct {
 	apiListener    manet.Listener
 	apiNetListener net.Listener
 	apiServer      *http.Server
+	staticDirs     map[string]string
 }
 
 var (
@@ -288,6 +289,27 @@ func kubo_node_stop(handle uint64) int64 {
 	return 0
 }
 
+//export kubo_node_add_static
+func kubo_node_add_static(handle uint64, prefix *C.char, dir *C.char) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+	if h.staticDirs == nil {
+		h.staticDirs = make(map[string]string)
+	}
+	p := C.GoString(prefix)
+	if p == "" {
+		p = "/"
+	}
+	h.staticDirs[p] = C.GoString(dir)
+	setError(nil)
+	return 0
+}
+
 //export kubo_node_start_api
 func kubo_node_start_api(handle uint64, multiaddr *C.char) *C.char {
 	nodesMu.RLock()
@@ -325,6 +347,18 @@ func kubo_node_start_api(handle uint64, multiaddr *C.char) *C.char {
 		corehttp.WebUIOption,
 		corehttp.GatewayOption("/ipfs", "/ipns"),
 		corehttp.VersionOption(),
+	}
+
+	// Serve any registered static directories.
+	if len(h.staticDirs) > 0 {
+		dirs := h.staticDirs
+		opts = append(opts, func(n *core.IpfsNode, _ net.Listener, mux *http.ServeMux) (*http.ServeMux, error) {
+			for prefix, dir := range dirs {
+				fs := http.FileServer(http.Dir(dir))
+				mux.Handle(prefix, http.StripPrefix(prefix, fs))
+			}
+			return mux, nil
+		})
 	}
 
 	h.apiListener = listener
