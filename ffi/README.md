@@ -105,4 +105,6 @@ make app               # build a signed .app bundle (cd ffi/xcode && make app)
 - `ffi/rust` — Safe Rust crate (`kubo-ffi`) wrapping the C FFI.
 - `ffi/swift` — Swift package (`Kubo`) wrapping the C FFI.
 - `ffi/xcode` — Xcode/SwiftPM sample app demonstrating the FFI with a GUI.
+- `ffi/rust/examples/tui.rs` — ratatui TUI demo (peers, logs).
+- `ffi/rust/examples/web.rs` — WebUI service demo.
 - `test/rust-ffi-test` — Rust integration test runner.

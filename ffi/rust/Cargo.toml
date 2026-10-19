@@ -5,5 +5,7 @@ edition = "2021"
 description = "Safe Rust bindings to the Kubo C FFI layer"
 
 [dependencies]
+ratatui = "0.30"
+crossterm = "0.29"
 
 [build-dependencies]

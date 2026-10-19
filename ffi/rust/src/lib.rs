@@ -126,6 +126,10 @@ impl Node {
         }
     }
 
+    pub fn stop(&self) {
+        unsafe { kubo_node_stop(self.0); }
+    }
+
     pub fn connect(&self, addr: &str) -> bool {
         let c = match CString::new(addr) {
             Ok(c) => c,
