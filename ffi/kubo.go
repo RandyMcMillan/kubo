@@ -323,6 +323,7 @@ func kubo_node_start_api(handle uint64, multiaddr *C.char) *C.char {
 		corehttp.CheckVersionOption(),
 		corehttp.CommandsOption(cctx),
 		corehttp.WebUIOption,
+		corehttp.GatewayOption("/ipfs", "/ipns"),
 		corehttp.VersionOption(),
 	}
 
