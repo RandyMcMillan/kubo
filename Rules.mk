@@ -109,6 +109,10 @@ xcode-ffi:
 	cd ffi/xcode && swift build -Xlinker -L../swift -Xlinker -lkubo_ffi -Xlinker -framework -Xlinker Security -Xlinker -framework -Xlinker CoreFoundation -Xlinker -lresolv -Xlinker -lpthread -Xlinker -ldl
 .PHONY: xcode-ffi
 
+xcode-app:
+	cd ffi/xcode && make app
+.PHONY: xcode-app
+
 distclean: clean
 	rm -rf $(DISTCLEAN)
 	git clean -ffxd
@@ -171,6 +175,7 @@ help:
 	@echo '  swift-ffi    - Build Swift FFI bindings'
 	@echo '  test_swift_ffi - Run Swift FFI tests'
 	@echo '  xcode-ffi    - Build Xcode/SwiftPM sample app'
+	@echo '  xcode-app    - Build signed .app bundle'
 #	@echo '  dist_install - TODO: c.f. ./cmd/ipfs/dist/README.md'
 	@echo ''
 	@echo 'CLEANING TARGETS:'
