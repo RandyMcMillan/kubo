@@ -5,7 +5,7 @@ import Kubo
 struct ContentView: View {
     @State private var version: String = Kubo.version()
     @State private var repoPath: String = FileManager.default.temporaryDirectory.appendingPathComponent("kubo-xcode-demo").path
-    @State private var command: String = "id"
+    @State private var command: String = ""
     @State private var output: String = ""
     @State private var busy: Bool = false
     @State private var node: Kubo.Node? = nil
@@ -15,12 +15,12 @@ struct ContentView: View {
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
     @State private var webUrl: String = ""
-    @State private var selectedSection: Section = .status
+    @State private var selectedSection: SidebarSection = .status
 
-    enum Section: String, CaseIterable, Identifiable {
+    enum SidebarSection: String, CaseIterable, Identifiable {
         case status = "Status"
-        case files = "Files"
         case peers = "Peers"
+        case files = "Files"
         case settings = "Settings"
         case diagnostics = "Diagnostics"
         case webui = "WebUI"
@@ -30,82 +30,139 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedSection) {
-                ForEach(Section.allCases) { section in
-                    Label(section.rawValue, systemImage: icon(for: section)).tag(section)
+                Section("Kubo") {
+                    ForEach(SidebarSection.allCases) { section in
+                        Label(section.rawValue, systemImage: icon(for: section)).tag(section)
+                    }
                 }
             }
-            .navigationTitle("Kubo")
+            .listStyle(.sidebar)
+            .navigationTitle("Kubo IPFS")
         } detail: {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Kubo IPFS FFI").font(.title)
-                Text("Kubo version: \(version)").font(.caption)
-                TextField("Repo path", text: $repoPath)
+            VStack(alignment: .leading, spacing: 0) {
+                // Header bar
                 HStack {
-                    Button("Init Repo") { run("init") }
-                    Button("Start Node") { startNode() }
-                    Button("Stop Node") { stopNode() }
+                    Text(selectedSection.rawValue).font(.title2).bold()
+                    Spacer()
+                    Text(version).font(.caption).foregroundColor(.secondary)
                 }
-                if !peerId.isEmpty {
-                    Text("Peer ID: \(peerId)").font(.caption)
-                    Text("Listening: \(addrs)").font(.caption)
-                    Text("Connected peers: \(peerCount)").font(.caption).bold()
-                }
-                switch selectedSection {
-                case .status:
-                    HStack {
-                        Button("ID") { run("id") }
-                        Button("Version") { run("version") }
-                        Button("Repo Stat") { run("repo stat") }
-                        Button("API: version") { runApi("version") }
-                    }
-                case .files:
-                    HStack {
-                        Button("Add (stdin)") { run("add --help") }
-                        Button("Files ls /") { run("files ls /") }
-                        Button("Pin ls") { run("pin ls") }
-                    }
-                case .peers:
-                    HStack {
-                        Button("Swarm Peers") { showPeers() }
-                        Button("Dial Bootstrap") { dialBootstrap() }
-                        Button("Bootstrap List") { run("bootstrap list") }
-                    }
-                case .settings:
-                    HStack {
-                        Button("Config show") { run("config show") }
-                        Button("API: config") { runApi("config/show") }
-                    }
-                case .diagnostics:
-                    HStack {
-                        Button("Diag") { run("diag sys") }
-                        Button("Log level") { run("log level") }
-                        Button("Stats bw") { run("stats bw") }
-                    }
-                case .webui:
-                    if !webUrl.isEmpty {
-                        WebView(urlString: webUrl)
-                    } else {
-                        Text("Start a node to load the WebUI").foregroundColor(.secondary)
-                    }
-                }
-                if busy { ProgressView() }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+
                 ScrollView {
-                    Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Repo + node controls
+                        GroupBox("Node") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                TextField("Repo path", text: $repoPath)
+                                HStack {
+                                    Button("Init") { run("init") }
+                                    Button("Start") { startNode() }
+                                    Button("Stop") { stopNode() }
+                                    Spacer()
+                                    if busy { ProgressView().scaleEffect(0.7) }
+                                }
+                                if !peerId.isEmpty {
+                                    LabeledContent("Peer ID", value: peerId)
+                                    LabeledContent("Listening", value: addrs)
+                                    LabeledContent("Peers", value: "\(peerCount)")
+                                }
+                            }
+                            .padding(8)
+                        }
+
+                        // Section-specific actions
+                        GroupBox(selectedSection.rawValue) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                actions(for: selectedSection)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        // Command runner
+                        GroupBox("Command") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    TextField("ipfs …", text: $command)
+                                    Button("Run") { run(command) }.disabled(busy)
+                                }
+                            }
+                            .padding(8)
+                        }
+
+                        // Log terminal
+                        GroupBox("Log") {
+                            ScrollView {
+                                Text(output).font(.system(.caption, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(minHeight: 220)
+                            .background(Color.black.opacity(0.85))
+                            .foregroundColor(.green)
+                            .cornerRadius(6)
+                            .padding(8)
+                        }
+
+                        if !webUrl.isEmpty && selectedSection == .webui {
+                            GroupBox("WebUI") {
+                                WebView(urlString: webUrl).frame(minHeight: 360)
+                            }
+                        }
+                    }
+                    .padding()
                 }
-                .frame(minHeight: 200)
-                .background(Color.black.opacity(0.05))
-                .cornerRadius(8)
             }
-            .padding()
         }
         .onAppear { startLogPolling() }
     }
 
-    private func icon(for section: Section) -> String {
+    @ViewBuilder
+    private func actions(for section: SidebarSection) -> some View {
+        switch section {
+        case .status:
+            HStack {
+                Button("ID") { run("id") }
+                Button("Version") { run("version") }
+                Button("Repo Stat") { run("repo stat") }
+                Button("API: version") { runApi("version") }
+            }
+        case .peers:
+            HStack {
+                Button("Swarm Peers") { showPeers() }
+                Button("Dial Bootstrap") { dialBootstrap() }
+                Button("Bootstrap List") { run("bootstrap list") }
+            }
+        case .files:
+            HStack {
+                Button("Files ls /") { run("files ls /") }
+                Button("Pin ls") { run("pin ls") }
+                Button("Repo ls") { run("repo ls") }
+            }
+        case .settings:
+            HStack {
+                Button("Config show") { run("config show") }
+                Button("API: config") { runApi("config/show") }
+            }
+        case .diagnostics:
+            HStack {
+                Button("Diag") { run("diag sys") }
+                Button("Log level") { run("log level") }
+                Button("Stats bw") { run("stats bw") }
+            }
+        case .webui:
+            if webUrl.isEmpty {
+                Text("Start a node to load the WebUI").foregroundColor(.secondary)
+            } else {
+                Link("Open in browser", destination: URL(string: webUrl)!)
+            }
+        }
+    }
+
+    private func icon(for section: SidebarSection) -> String {
         switch section {
         case .status: return "info.circle"
-        case .files: return "doc"
         case .peers: return "network"
+        case .files: return "doc"
         case .settings: return "gear"
         case .diagnostics: return "stethoscope"
         case .webui: return "globe"
@@ -125,7 +182,8 @@ struct ContentView: View {
     }
 
     private func startPeerPolling() {
-        Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+        peerTimer?.invalidate()
+        peerTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
             guard let n = self.node else { return }
             let peers = n.swarmPeers()
             DispatchQueue.main.async {
@@ -168,6 +226,8 @@ struct ContentView: View {
     }
 
     private func stopNode() {
+        peerTimer?.invalidate()
+        peerTimer = nil
         node?.stop()
         node = nil
         peerId = ""; addrs = ""; peerCount = 0; webUrl = ""
