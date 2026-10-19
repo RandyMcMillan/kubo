@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 import Kubo
 
 struct ContentView: View {
@@ -43,10 +44,13 @@ struct ContentView: View {
             ScrollView {
                 Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 240)
+            .frame(minHeight: 200)
             .background(Color.black.opacity(0.05))
             .cornerRadius(8)
             if !webUrl.isEmpty {
+                WebView(urlString: webUrl)
+                    .frame(minHeight: 240)
+                    .cornerRadius(8)
                 Link("Open WebUI", destination: URL(string: webUrl)!).font(.caption)
             }
         }
@@ -173,6 +177,21 @@ struct ContentView: View {
             } catch {
                 DispatchQueue.main.async { self.log("Error: \(error)"); self.busy = false }
             }
+        }
+    }
+}
+struct WebView: NSViewRepresentable {
+    let urlString: String
+    func makeNSView(context: Context) -> WKWebView {
+        let wv = WKWebView()
+        if let url = URL(string: urlString) {
+            wv.load(URLRequest(url: url))
+        }
+        return wv
+    }
+    func updateNSView(_ nsView: WKWebView, context: Context) {
+        if let url = URL(string: urlString), nsView.url != url {
+            nsView.load(URLRequest(url: url))
         }
     }
 }
