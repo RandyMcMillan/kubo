@@ -59,12 +59,41 @@ struct ContentView: View {
         }
         .padding()
         .frame(minWidth: 720, minHeight: 640)
-        .onAppear { startLogPolling() }
+        .onAppear { startLogPolling(); autoStart() }
     }
 
     private func log(_ s: String) {
         let ts = ISO8601DateFormatter().string(from: Date())
         output = "[\(ts)] \(s)\n" + output
+    }
+
+    private func autoStart() {
+        let logFile = "/tmp/kubo-xcode.log"
+        FileManager.default.createFile(atPath: logFile, contents: nil)
+        func w(_ s: String) { if let h = FileHandle(forWritingAtPath: logFile) { h.seekToEndOfFile(); h.write((s+"\n").data(using: .utf8)!); h.closeFile() } }
+        w("AUTO: starting node")
+        DispatchQueue.global().async {
+            do {
+                if !FileManager.default.fileExists(atPath: repoPath) {
+                    try Kubo.initRepo(repoPath)
+                }
+                let n = try Kubo.Node(repoPath: repoPath, online: true)
+                DispatchQueue.main.async {
+                    self.node = n
+                    self.peerId = n.peerId ?? ""
+                    self.addrs = n.listeningAddrs ?? ""
+                    w("AUTO: peer=\(self.peerId)")
+                    w("AUTO: addrs=\(self.addrs)")
+                    self.log("[auto] node started peer=\(self.peerId)")
+                    self.log("[auto] listening: \(self.addrs)")
+                    self.startPeerPolling()
+                    // dial bootstrap to show network activity
+                    self.dialBootstrap()
+                }
+            } catch {
+                DispatchQueue.main.async { w("AUTO ERROR: \(error)"); self.log("Error: \(error)") }
+            }
+        }
     }
 
     private func startLogPolling() {
