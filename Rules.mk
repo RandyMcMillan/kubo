@@ -96,8 +96,8 @@ nofuse: build
 install: cmd/ipfs-install
 .PHONY: install
 
-ipfswatch-install: cmd/ipfswatch-install
-.PHONY: ipfswatch-install
+install-ipfswatch: cmd/ipfswatch-install
+.PHONY: install-ipfswatch
 install_unsupported: install
 	@echo "/=======================================================================\\"
 	@echo '|                                                                       |'
