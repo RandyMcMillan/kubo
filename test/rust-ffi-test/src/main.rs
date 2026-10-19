@@ -527,8 +527,13 @@ fn test_networking() {
             return;
         }
 
-        // wait a bit for bootstrap
-        std::thread::sleep(std::time::Duration::from_secs(8));
+        // Dial a bootstrap peer to demonstrate real network connectivity
+        let bootstrap = "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN";
+        let bs = CString::new(bootstrap).unwrap();
+        let _ = kubo_node_connect(handle, bs.as_ptr());
+
+        // wait for peers
+        std::thread::sleep(std::time::Duration::from_secs(10));
 
         let peers = kubo_swarm_peers(handle);
         if !peers.is_null() {
