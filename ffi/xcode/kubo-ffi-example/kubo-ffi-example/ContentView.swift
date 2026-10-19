@@ -105,6 +105,24 @@ struct ContentView: View {
             }
         }
         .onAppear { startLogPolling(); autoStart() }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button(action: { logExpanded.toggle() }) {
+                    Label(logExpanded ? "Hide Log" : "Show Log", systemImage: logExpanded ? "chevron.down" : "chevron.up")
+                }
+                Spacer()
+                if !webUrl.isEmpty {
+                    Button(action: { if let url = URL(string: webUrl) { NSWorkspace.shared.open(url) } }) {
+                        Label("Open in Browser", systemImage: "safari")
+                    }
+                }
+                Button(action: { if let url = URL(string: "https://github.com/ipfs/ipfs-webui") { NSWorkspace.shared.open(url) } }) {
+                    Label("WebUI Repo", systemImage: "link")
+                }
+            }
+            .padding(8)
+            .background(.bar)
+        }
     }
 
     @ViewBuilder
