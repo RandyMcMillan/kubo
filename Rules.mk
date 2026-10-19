@@ -40,6 +40,8 @@ include $(dir)/Rules.mk
 dir := cmd/ipfs
 include $(dir)/Rules.mk
 
+dir := cmd/ipfswatch
+include $(dir)/Rules.mk
 # include this file only if coverage target is executed
 # it is quite expensive
 ifneq ($(filter coverage% clean distclean test/unit/gotest.junit.xml,$(MAKECMDGOALS)),)
@@ -94,6 +96,8 @@ nofuse: build
 install: cmd/ipfs-install
 .PHONY: install
 
+ipfswatch-install: cmd/ipfswatch-install
+.PHONY: ipfswatch-install
 install_unsupported: install
 	@echo "/=======================================================================\\"
 	@echo '|                                                                       |'
@@ -121,7 +125,8 @@ help:
 	@echo ''
 	@echo '  all          - print this help message'
 	@echo '  build        - Build binary at ./cmd/ipfs/ipfs'
-	@echo '  nofuse       - Build binary with no fuse support'
+	@echo '  ipfswatch    - Build binary at ./cmd/ipfswatch/ipfswatch'
+	@echo '  ipfswatch-install - Build and install ipfswatch into $$GOBIN'	@echo '  nofuse       - Build binary with no fuse support'
 	@echo '  install      - Build binary and install into $$GOBIN'
 	@echo '  mod_tidy     - Remove unused dependencies from go.mod files'
 #	@echo '  dist_install - TODO: c.f. ./cmd/ipfs/dist/README.md'
