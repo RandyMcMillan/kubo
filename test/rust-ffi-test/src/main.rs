@@ -18,6 +18,7 @@ extern "C" {
     fn kubo_node_start(repoPath: *const c_char, online: u8) -> u64;
     fn kubo_node_stop(handle: u64) -> i64;
     fn kubo_node_peer_id(handle: u64) -> *mut c_char;
+    fn kubo_swarm_peers(handle: u64) -> *mut c_char;
     fn kubo_node_listening_addrs(handle: u64) -> *mut c_char;
     fn kubo_node_connect(handle: u64, addr: *const c_char) -> i64;
     fn kubo_unixfs_add_bytes(handle: u64, data: *const u8, length: usize) -> *mut c_char;
@@ -502,6 +503,52 @@ fn test_two_nodes_exchange_data() {
     }
 }
 
+
+fn test_networking() {
+    let tmp = "./tmp/kubo-rust-test-net";
+    rmrf(tmp);
+
+    unsafe {
+        let path = CString::new(tmp).unwrap();
+        if kubo_init_repo(path.as_ptr()) != 0 {
+            fail("init repo failed");
+            return;
+        }
+
+        let handle = kubo_node_start(path.as_ptr(), 1);
+        if handle == 0 {
+            let err = kubo_ffi_last_error();
+            let msg = if err.is_null() { "unknown".to_string() } else {
+                let s = CStr::from_ptr(err).to_string_lossy().to_string();
+                kubo_ffi_free_string(err);
+                s
+            };
+            fail(&format!("node start: {}", msg));
+            return;
+        }
+
+        // wait a bit for bootstrap
+        std::thread::sleep(std::time::Duration::from_secs(8));
+
+        let peers = kubo_swarm_peers(handle);
+        if !peers.is_null() {
+            let s = CStr::from_ptr(peers).to_string_lossy();
+            let count = s.lines().filter(|l| !l.is_empty()).count();
+            if count > 0 {
+                ok(&format!("networking: connected to {} peers", count));
+            } else {
+                fail("networking: no peers connected");
+            }
+            kubo_ffi_free_string(peers);
+        } else {
+            fail("swarm_peers returned null");
+        }
+
+        kubo_node_stop(handle);
+    }
+    rmrf(tmp);
+}
+
 fn main() {
     println!("=== Rust FFI Test Runner ===");
 
@@ -513,6 +560,7 @@ fn main() {
     test_hello_world_cidv0_alignment();
     test_add_cat_empty();
     test_two_nodes_exchange_data();
+    test_networking();
 
     println!();
     let failures = FAILURES.load(Ordering::SeqCst);
