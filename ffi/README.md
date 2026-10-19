@@ -41,6 +41,9 @@ The library exports the following C functions (see `kubo.go`, `libp2p.go`,
 - `kubo_block_put` / `kubo_block_get` / `kubo_block_stat` — raw blocks.
 - `kubo_git_*` — git repository helpers.
 - `kubo_nostr_relay_*` — Nostr relay helpers.
+- `kubo_run_command(repoPath, argc, argv)` / `kubo_run_command_line(repoPath, line)` —
+  generic runner that executes *any* Kubo command (full coverage of the
+  CLI/CoreAPI surface) and returns its output.
 
 ## Testing
 
