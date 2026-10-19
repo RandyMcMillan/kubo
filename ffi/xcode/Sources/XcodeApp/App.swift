@@ -45,6 +45,7 @@ struct ContentView: View {
                     Button("Swarm Peers") { showPeers() }
                     Button("Bootstrap") { dialBootstrap() }
                     Button("ID") { run("id") }
+                    Button("API: version") { runApi("version") }
                 }
                 HStack {
                     TextField("Command", text: $command)
@@ -182,6 +183,20 @@ struct ContentView: View {
         let peers = n.swarmPeers()
         peerCount = peers.count
         log("peers(\(peers.count)):\n\(peers.joined(separator: "\n"))")
+    }
+
+    private func runApi(_ endpoint: String) {
+        busy = true
+        log("$ api \(endpoint)")
+        guard let node = node else { log("no node"); busy = false; return }
+        Task {
+            do {
+                let out = try await node.apiCall(endpoint)
+                await MainActor.run { self.log(out); self.busy = false }
+            } catch {
+                await MainActor.run { self.log("Error: \(error)"); self.busy = false }
+            }
+        }
     }
 
     private func run(_ cmd: String) {

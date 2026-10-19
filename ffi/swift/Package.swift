@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "KuboFFI",
+    platforms: [.macOS(.v13)],
     products: [
         .library(name: "Kubo", targets: ["Kubo"]),
     ],

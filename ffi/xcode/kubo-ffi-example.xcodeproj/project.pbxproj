@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4BB040693086A0F500EE1E19 /* Kubo in Frameworks */ = {isa = PBXBuildFile; productRef = PRODDEP001 /* Kubo */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4B12FA973086922100B53876 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -42,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4BB040693086A0F500EE1E19 /* Kubo in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,21 +154,6 @@
 		};
 /* End PBXNativeTarget section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		PRODDEP001 /* Kubo */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */;
-			productName = Kubo;
-		};
-/* End XCSwiftPackageProductDependency section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../swift;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin PBXProject section */
 		4B12FA7D3086922000B53876 /* Project object */ = {
 			isa = PBXProject;
@@ -194,13 +184,13 @@
 			);
 			mainGroup = 4B12FA7C3086922000B53876;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4B12FA863086922000B53876 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (
-				PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */,
-			);
 			targets = (
 				4B12FA843086922000B53876 /* kubo-ffi-example */,
 				4B12FA953086922100B53876 /* kubo-ffi-exampleTests */,
@@ -247,7 +237,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export PATH=/opt/homebrew/bin:$PATH; cd $SRCROOT/../swift && make build";
+			shellScript = "export PATH=/opt/homebrew/bin:$PATH; cd $SRCROOT/../swift && make build\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -300,8 +290,8 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "kubo-ffi-example/kubo-ffi-example//Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -315,11 +305,21 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				OTHER_LDFLAGS = "-L$(SRCROOT)/../swift -lkubo_ffi -framework Security -framework CoreFoundation -lresolv -lpthread -ldl";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-L$(SRCROOT)/../swift",
+					"-lkubo_ffi",
+					"-framework",
+					Security,
+					"-framework",
+					CoreFoundation,
+					"-lresolv",
+					"-lpthread",
+					"-ldl",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.gnostr.kubo-ffi-example";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -347,8 +347,8 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "kubo-ffi-example/kubo-ffi-example//Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -362,11 +362,21 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				OTHER_LDFLAGS = "-L$(SRCROOT)/../swift -lkubo_ffi -framework Security -framework CoreFoundation -lresolv -lpthread -ldl";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-L$(SRCROOT)/../swift",
+					"-lkubo_ffi",
+					"-framework",
+					Security,
+					"-framework",
+					CoreFoundation,
+					"-lresolv",
+					"-lpthread",
+					"-ldl",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.gnostr.kubo-ffi-example";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -641,6 +651,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../swift;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		PRODDEP001 /* Kubo */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */;
+			productName = Kubo;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4B12FA7D3086922000B53876 /* Project object */;
 }

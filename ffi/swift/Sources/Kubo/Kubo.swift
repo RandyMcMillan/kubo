@@ -58,6 +58,7 @@ public struct Kubo {
     public class Node {
         private let handle: UInt64
         public let repoPath: String
+        private var _apiUrl: String? = nil
 
         public init(repoPath: String, online: Bool) throws {
             self.repoPath = repoPath
@@ -99,6 +100,38 @@ public struct Kubo {
                 return s
             }
             return nil
+        }
+
+        /// Base HTTP URL for the node's RPC API (e.g. http://127.0.0.1:5001).
+        public func apiUrl() -> String? {
+            if let cached = _apiUrl { return cached }
+            guard let api = startApi("/ip4/127.0.0.1/tcp/0") else { return nil }
+            let parts = api.split(separator: "/")
+            var host = "127.0.0.1"; var port = "5001"
+            var i = 0
+            while i < parts.count {
+                if parts[i] == "ip4" && i + 1 < parts.count { host = String(parts[i+1]) }
+                if parts[i] == "tcp" && i + 1 < parts.count { port = String(parts[i+1]) }
+                i += 1
+            }
+            let url = "http://\(host):\(port)"
+            _apiUrl = url
+            return url
+        }
+
+        /// Call any Kubo HTTP RPC endpoint (full API coverage).
+        public func apiCall(_ endpoint: String, params: [String: String] = [:]) async throws -> String {
+            guard let base = apiUrl() else { throw KuboError.commandFailed("no api") }
+            var comps = URLComponents(string: base + "/api/v0/" + endpoint)!
+            comps.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+            guard let url = comps.url else { throw KuboError.commandFailed("bad url") }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+                throw KuboError.commandFailed("http \( (resp as? HTTPURLResponse)?.statusCode ?? -1)")
+            }
+            return String(data: data, encoding: .utf8) ?? ""
         }
 
         public func swarmPeers() -> [String] {
