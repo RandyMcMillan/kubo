@@ -101,11 +101,3 @@ struct ContentView: View {
     }
 }
 
-@main
-struct KuboFFIExampleApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}

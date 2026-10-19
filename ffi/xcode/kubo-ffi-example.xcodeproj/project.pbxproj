@@ -100,6 +100,7 @@
 			);
 			name = "kubo-ffi-example";
 			packageProductDependencies = (
+				PRODDEP001 /* Kubo */,
 			);
 			productName = "kubo-ffi-example";
 			productReference = 4B12FA853086922000B53876 /* kubo-ffi-example.app */;
@@ -147,6 +148,21 @@
 		};
 /* End PBXNativeTarget section */
 
+/* Begin XCSwiftPackageProductDependency section */
+		PRODDEP001 /* Kubo */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */;
+			productName = Kubo;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../swift;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin PBXProject section */
 		4B12FA7D3086922000B53876 /* Project object */ = {
 			isa = PBXProject;
@@ -181,6 +197,9 @@
 			productRefGroup = 4B12FA863086922000B53876 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				PKGREF0001 /* XCLocalSwiftPackageReference "../swift" */,
+			);
 			targets = (
 				4B12FA843086922000B53876 /* kubo-ffi-example */,
 				4B12FA953086922100B53876 /* kubo-ffi-exampleTests */,
@@ -259,7 +278,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = M684FYCYG6;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -276,6 +295,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				OTHER_LDFLAGS = "-L$(SRCROOT)/../swift -lkubo_ffi -framework Security -framework CoreFoundation -lresolv -lpthread -ldl";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
@@ -304,7 +324,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = M684FYCYG6;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -321,6 +341,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				OTHER_LDFLAGS = "-L$(SRCROOT)/../swift -lkubo_ffi -framework Security -framework CoreFoundation -lresolv -lpthread -ldl";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
