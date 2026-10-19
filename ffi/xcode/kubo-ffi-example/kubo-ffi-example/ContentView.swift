@@ -162,7 +162,7 @@ struct ContentView: View {
             if webUrl.isEmpty {
                 Text("Start a node to load the WebUI").foregroundColor(.secondary)
             } else {
-                Link("Open in browser", destination: URL(string: webUrl)!)
+                EmptyView()
             }
         }
     }
