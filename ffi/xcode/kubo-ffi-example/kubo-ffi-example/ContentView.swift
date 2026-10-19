@@ -15,48 +15,89 @@ struct ContentView: View {
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
     @State private var webUrl: String = ""
+    @State private var selectedSection: Section = .status
+
+    enum Section: String, CaseIterable, Identifiable {
+        case status = "Status"
+        case peers = "Peers"
+        case commands = "Commands"
+        case webui = "WebUI"
+        var id: String { rawValue }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Kubo IPFS FFI Demo").font(.title)
-            Text("Kubo version: \(version)").font(.caption)
-            TextField("Repo path", text: $repoPath)
-            HStack {
-                Button("Init Repo") { run("init") }
-                Button("Start Node (online)") { startNode() }
-                Button("Stop Node") { stopNode() }
+        NavigationSplitView {
+            List(Section.allCases, selection: $selectedSection) { section in
+                Label(section.rawValue, systemImage: icon(for: section))
             }
-            if !peerId.isEmpty {
-                Text("Peer ID: \(peerId)").font(.caption)
-                Text("Listening: \(addrs)").font(.caption)
-                Text("Connected peers: \(peerCount)").font(.caption).bold()
+            .navigationTitle("Kubo")
+        } detail: {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Kubo IPFS FFI Demo").font(.title)
+                Text("Kubo version: \(version)").font(.caption)
+                TextField("Repo path", text: $repoPath)
+                HStack {
+                    Button("Init Repo") { run("init") }
+                    Button("Start Node") { startNode() }
+                    Button("Stop Node") { stopNode() }
+                }
+                if !peerId.isEmpty {
+                    Text("Peer ID: \(peerId)").font(.caption)
+                    Text("Listening: \(addrs)").font(.caption)
+                    Text("Connected peers: \(peerCount)").font(.caption).bold()
+                }
+                switch selectedSection {
+                case .status:
+                    VStack(alignment: .leading) {
+                        HStack {
+                            Button("ID") { run("id") }
+                            Button("Version") { run("version") }
+                            Button("Swarm Addrs") { run("swarm addrs listen") }
+                        }
+                    }
+                case .peers:
+                    VStack(alignment: .leading) {
+                        HStack {
+                            Button("Swarm Peers") { showPeers() }
+                            Button("Dial Bootstrap") { dialBootstrap() }
+                        }
+                    }
+                case .commands:
+                    VStack(alignment: .leading) {
+                        HStack {
+                            TextField("Command", text: $command)
+                            Button("Run") { run(command) }.disabled(busy)
+                        }
+                    }
+                case .webui:
+                    VStack {
+                        if !webUrl.isEmpty {
+                            WebView(urlString: webUrl)
+                        } else {
+                            Text("Start a node to load the WebUI").foregroundColor(.secondary)
+                        }
+                    }
+                }
+                if busy { ProgressView() }
+                ScrollView {
+                    Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(minHeight: 200)
+                .background(Color.black.opacity(0.05))
+                .cornerRadius(8)
             }
-            HStack {
-                Button("Swarm Peers") { showPeers() }
-                Button("Dial Bootstrap") { dialBootstrap() }
-                Button("ID") { run("id") }
-            }
-            HStack {
-                TextField("Command", text: $command)
-                Button("Run") { run(command) }.disabled(busy)
-            }
-            if busy { ProgressView() }
-            ScrollView {
-                Text(output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(minHeight: 200)
-            .background(Color.black.opacity(0.05))
-            .cornerRadius(8)
-            if !webUrl.isEmpty {
-                WebView(urlString: webUrl)
-                    .frame(minHeight: 240)
-                    .cornerRadius(8)
-                Link("Open WebUI", destination: URL(string: webUrl)!).font(.caption)
-            }
+            .padding()
         }
-        .padding()
-        .frame(minWidth: 600, minHeight: 620)
         .onAppear { startLogPolling() }
+    }
+
+    private func icon(for section: Section) -> String {
+        switch section {
+        case .status: return "info.circle"
+        case .peers: return "network"
+        case .commands: return "terminal"
+        case .webui: return "globe"
+        }
     }
 
     private func log(_ s: String) {
@@ -74,15 +115,12 @@ struct ContentView: View {
     }
 
     private func startPeerPolling() {
-        peerTimer?.invalidate()
-        peerTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+        Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
             guard let n = self.node else { return }
             let peers = n.swarmPeers()
             DispatchQueue.main.async {
                 self.peerCount = peers.count
-                if peers.count > 0 {
-                    self.log("peers(\(peers.count))")
-                }
+                if peers.count > 0 { self.log("peers(\(peers.count))") }
             }
         }
     }
@@ -91,15 +129,11 @@ struct ContentView: View {
         busy = true
         DispatchQueue.global().async {
             do {
-                if !FileManager.default.fileExists(atPath: repoPath) {
-                    try Kubo.initRepo(repoPath)
-                }
+                if !FileManager.default.fileExists(atPath: repoPath) { try Kubo.initRepo(repoPath) }
                 let n = try Kubo.Node(repoPath: repoPath, online: true)
                 let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
                 let parts = apiUrl.split(separator: "/")
-                var host = "127.0.0.1"
-                var port = "5001"
-                var i = 0
+                var host = "127.0.0.1"; var port = "5001"; var i = 0
                 while i < parts.count {
                     if parts[i] == "ip4" && i + 1 < parts.count { host = String(parts[i+1]) }
                     if parts[i] == "tcp" && i + 1 < parts.count { port = String(parts[i+1]) }
@@ -124,14 +158,9 @@ struct ContentView: View {
     }
 
     private func stopNode() {
-        peerTimer?.invalidate()
-        peerTimer = nil
         node?.stop()
         node = nil
-        peerId = ""
-        addrs = ""
-        peerCount = 0
-        webUrl = ""
+        peerId = ""; addrs = ""; peerCount = 0; webUrl = ""
         log("[node stopped]")
     }
 
@@ -139,23 +168,14 @@ struct ContentView: View {
         busy = true
         log("$ dialing bootstrap peers")
         DispatchQueue.global().async {
-            guard let n = self.node else {
-                DispatchQueue.main.async { self.log("no node running"); self.busy = false }
-                return
-            }
-            let bootstraps = [
-                "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-            ]
+            guard let n = self.node else { DispatchQueue.main.async { self.log("no node"); self.busy = false }; return }
+            let bootstraps = ["/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"]
             for p in bootstraps {
                 let ok = n.connect(p)
                 DispatchQueue.main.async { self.log("connect \(p): \(ok ? "OK" : "FAIL")") }
             }
             let peers = n.swarmPeers()
-            DispatchQueue.main.async {
-                self.peerCount = peers.count
-                self.log("peers(\(peers.count))")
-                self.busy = false
-            }
+            DispatchQueue.main.async { self.peerCount = peers.count; self.log("peers(\(peers.count))"); self.busy = false }
         }
     }
 
@@ -180,13 +200,12 @@ struct ContentView: View {
         }
     }
 }
+
 struct WebView: NSViewRepresentable {
     let urlString: String
     func makeNSView(context: Context) -> WKWebView {
         let wv = WKWebView()
-        if let url = URL(string: urlString) {
-            wv.load(URLRequest(url: url))
-        }
+        if let url = URL(string: urlString) { wv.load(URLRequest(url: url)) }
         return wv
     }
     func updateNSView(_ nsView: WKWebView, context: Context) {
