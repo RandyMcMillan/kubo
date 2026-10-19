@@ -50,28 +50,18 @@ struct ContentView: View {
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
 
+                HStack {
+                    TextField("Repo path", text: $repoPath).textFieldStyle(.roundedBorder)
+                    Button("Init") { run("init") }
+                    Button("Start") { startNode() }
+                    Button("Stop") { stopNode() }
+                    if busy { ProgressView().scaleEffect(0.7) }
+                }
+                .padding(.horizontal)
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         // Repo + node controls
-                        GroupBox("Node") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                TextField("Repo path", text: $repoPath)
-                                HStack {
-                                    Button("Init") { run("init") }
-                                    Button("Start") { startNode() }
-                                    Button("Stop") { stopNode() }
-                                    Spacer()
-                                    if busy { ProgressView().scaleEffect(0.7) }
-                                }
-                                if !peerId.isEmpty {
-                                    LabeledContent("Peer ID", value: peerId)
-                                    LabeledContent("Listening", value: addrs)
-                                    LabeledContent("Peers", value: "\(peerCount)")
-                                }
-                            }
-                            .padding(8)
-                        }
-
                         // Section-specific actions
                         GroupBox(selectedSection.rawValue) {
                             VStack(alignment: .leading, spacing: 8) {
