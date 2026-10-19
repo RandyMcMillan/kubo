@@ -75,6 +75,23 @@ mod_tidy:
 coverage: $(COVERAGE)
 .PHONY: coverage
 
+
+
+ffi:
+	cd ffi && $(GOCC) build ./...
+.PHONY: ffi
+
+ffi-shared:
+	cd ffi && $(GOCC) build -buildmode=c-shared -o libkubo.dylib .
+.PHONY: ffi-shared
+
+rust-ffi-test:
+	cd test/rust-ffi-test && cargo run
+.PHONY: rust-ffi-test
+
+test_rust_ffi: rust-ffi-test
+.PHONY: test_rust_ffi
+
 distclean: clean
 	rm -rf $(DISTCLEAN)
 	git clean -ffxd
