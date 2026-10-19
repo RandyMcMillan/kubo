@@ -109,7 +109,7 @@ xcode-ffi:
 	cd ffi/xcode && swift build -Xlinker -L../swift -Xlinker -lkubo_ffi -Xlinker -framework -Xlinker Security -Xlinker -framework -Xlinker CoreFoundation -Xlinker -lresolv -Xlinker -lpthread -Xlinker -ldl
 .PHONY: xcode-ffi
 
-xcode-app:
+xcode-app: xcode-ffi
 	cd ffi/xcode && make app
 .PHONY: xcode-app
 
