@@ -158,6 +158,8 @@ extern GoInt64 kubo_unixfs_cat(GoUint64 handle, char* cidStr, uint8_t** out, siz
 extern char* kubo_block_put(GoUint64 handle, uint8_t* data, size_t length);
 extern GoInt64 kubo_block_get(GoUint64 handle, char* cidStr, uint8_t** out, size_t* outLen);
 extern GoInt64 kubo_block_stat(GoUint64 handle, char* cidStr);
+extern GoUint64 kubo_watch_path(char* repoPath, char* watchPath);
+extern GoInt64 kubo_watch_stop(GoUint64 handle);
 extern GoUint64 kubo_libp2p_host_new(void);
 extern GoInt64 kubo_libp2p_host_close(GoUint64 handle);
 extern char* kubo_libp2p_host_peer_id(GoUint64 handle);

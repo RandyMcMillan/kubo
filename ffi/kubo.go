@@ -14,6 +14,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unsafe"
@@ -21,6 +23,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
@@ -706,4 +709,192 @@ func kubo_block_stat(handle uint64, cidStr *C.char) int64 {
 
 	setError(nil)
 	return int64(stat.Size())
+}
+
+// ---------------------------------------------------------------------------
+// ipfswatch: directory watcher
+// ---------------------------------------------------------------------------
+
+var (
+	watchMu      sync.Mutex
+	watchHandles        = make(map[uint64]*watchHandle)
+	watchNext    uint64 = 1
+)
+
+type watchHandle struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+func isHidden(path string) bool {
+	base := filepath.Base(path)
+	return len(base) > 0 && base[0] == '.'
+}
+
+func isDir(path string) (bool, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	return fi.IsDir(), nil
+}
+
+func addTree(w *fsnotify.Watcher, root string) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		d, err := isDir(path)
+		if err != nil {
+			return nil
+		}
+		if d {
+			if err := w.Add(path); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+//export kubo_watch_path
+func kubo_watch_path(repoPath *C.char, watchPath *C.char) uint64 {
+	if err := ensurePlugins(); err != nil {
+		setError(err)
+		return 0
+	}
+
+	rp := C.GoString(repoPath)
+	wp := C.GoString(watchPath)
+
+	r, err := fsrepo.Open(rp)
+	if err != nil {
+		setError(fmt.Errorf("open repo: %w", err))
+		return 0
+	}
+
+	node, err := core.NewNode(context.Background(), &core.BuildCfg{
+		Online: true,
+		Repo:   r,
+	})
+	if err != nil {
+		r.Close()
+		setError(fmt.Errorf("new node: %w", err))
+		return 0
+	}
+
+	api, err := coreapi.NewCoreAPI(node)
+	if err != nil {
+		node.Close()
+		r.Close()
+		setError(fmt.Errorf("core api: %w", err))
+		return 0
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		node.Close()
+		r.Close()
+		setError(fmt.Errorf("watcher: %w", err))
+		return 0
+	}
+
+	if err := addTree(watcher, wp); err != nil {
+		watcher.Close()
+		node.Close()
+		r.Close()
+		setError(fmt.Errorf("add tree: %w", err))
+		return 0
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		defer watcher.Close()
+		defer node.Close()
+		defer r.Close()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				d, err := isDir(e.Name)
+				if err != nil {
+					continue
+				}
+				switch e.Op {
+				case fsnotify.Remove:
+					if d {
+						watcher.Remove(e.Name)
+					}
+				default:
+					if e.Op == fsnotify.Create && d {
+						addTree(watcher, e.Name)
+					}
+					go func(name string, isDir bool) {
+						file, err := os.Open(name)
+						if err != nil {
+							return
+						}
+						defer file.Close()
+						st, err := file.Stat()
+						if err != nil {
+							return
+						}
+						f, err := files.NewReaderPathFile(name, file, st)
+						if err != nil {
+							return
+						}
+						k, err := api.Unixfs().Add(ctx, f)
+						if err != nil {
+							return
+						}
+						setError(nil)
+						_ = k
+						_ = isDir
+					}(e.Name, d)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				_ = err
+			}
+		}
+	}()
+
+	h := &watchHandle{cancel: cancel, done: done}
+	watchMu.Lock()
+	handle := watchNext
+	watchNext++
+	watchHandles[handle] = h
+	watchMu.Unlock()
+
+	setError(nil)
+	return handle
+}
+
+//export kubo_watch_stop
+func kubo_watch_stop(handle uint64) int64 {
+	watchMu.Lock()
+	h, ok := watchHandles[handle]
+	if ok {
+		delete(watchHandles, handle)
+	}
+	watchMu.Unlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid watch handle %d", handle))
+		return -1
+	}
+	h.cancel()
+	<-h.done
+	setError(nil)
+	return 0
 }

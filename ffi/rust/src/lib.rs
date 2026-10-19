@@ -7,6 +7,8 @@ extern "C" {
     fn kubo_ffi_free_buffer(buf: *mut u8);
     fn kubo_get_logs() -> *mut c_char;
     fn kubo_init_repo(repo_path: *const c_char) -> i64;
+    fn kubo_watch_path(repo_path: *const c_char, watch_path: *const c_char) -> u64;
+    fn kubo_watch_stop(handle: u64) -> i64;
     fn kubo_node_start(repo_path: *const c_char, online: u8) -> u64;
     fn kubo_node_stop(handle: u64) -> i64;
     fn kubo_node_peer_id(handle: u64) -> *mut c_char;
@@ -148,6 +150,38 @@ pub fn run_command(repo_path: &str, command: &str) -> Result<String, String> {
     let s = unsafe { CStr::from_ptr(p).to_string_lossy().to_string() };
     unsafe { kubo_ffi_free_string(p) };
     Ok(s)
+}
+
+
+/// A handle to a running directory watcher.
+pub struct WatchHandle(u64);
+
+impl WatchHandle {
+    pub fn start(repo_path: &str, watch_path: &str) -> Result<Self, String> {
+        let rp = CString::new(repo_path).map_err(|e| e.to_string())?;
+        let wp = CString::new(watch_path).map_err(|e| e.to_string())?;
+        let h = unsafe { kubo_watch_path(rp.as_ptr(), wp.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "watch start failed".into()))
+        } else {
+            Ok(WatchHandle(h))
+        }
+    }
+
+    pub fn stop(&self) -> Result<(), String> {
+        let rc = unsafe { kubo_watch_stop(self.0) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "watch stop failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl Drop for WatchHandle {
+    fn drop(&mut self) {
+        unsafe { kubo_watch_stop(self.0); }
+    }
 }
 
 #[cfg(test)]

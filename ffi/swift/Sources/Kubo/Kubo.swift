@@ -106,6 +106,24 @@ public struct Kubo {
         deinit { kubo_node_stop(handle) }
     }
 
+    public class WatchHandle {
+        private let handle: UInt64
+        public init(repoPath: String, watchPath: String) throws {
+            let h = repoPath.withCString { rp in
+                watchPath.withCString { wp in
+                    kubo_watch_path(UnsafeMutablePointer(mutating: rp), UnsafeMutablePointer(mutating: wp))
+                }
+            }
+            if h == 0 {
+                let msg = Kubo.lastError() ?? "watch start failed"
+                throw KuboError.commandFailed(msg)
+            }
+            self.handle = h
+        }
+        public func stop() { kubo_watch_stop(handle) }
+        deinit { kubo_watch_stop(handle) }
+    }
+
     public static func lastError() -> String? {
         guard let p = kubo_ffi_last_error() else { return nil }
         let s = String(cString: p)
