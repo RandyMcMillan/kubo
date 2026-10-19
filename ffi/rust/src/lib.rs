@@ -14,6 +14,7 @@ extern "C" {
     fn kubo_node_peer_id(handle: u64) -> *mut c_char;
     fn kubo_swarm_peers(handle: u64) -> *mut c_char;
     fn kubo_node_connect(handle: u64, addr: *const c_char) -> i64;
+    fn kubo_node_start_api(handle: u64, multiaddr: *const c_char) -> *mut c_char;
     fn kubo_run_command_line(repo_path: *const c_char, line: *const c_char) -> *mut c_char;
 }
 
@@ -109,6 +110,19 @@ impl Node {
             let s = CStr::from_ptr(p).to_string_lossy().to_string();
             kubo_ffi_free_string(p);
             s.lines().map(|l| l.to_string()).filter(|l| !l.is_empty()).collect()
+        }
+    }
+
+    pub fn start_api(&self, multiaddr: &str) -> Option<String> {
+        let c = CString::new(multiaddr).ok()?;
+        unsafe {
+            let p = kubo_node_start_api(self.0, c.as_ptr());
+            if p.is_null() {
+                return None;
+            }
+            let s = CStr::from_ptr(p).to_string_lossy().to_string();
+            kubo_ffi_free_string(p);
+            Some(s)
         }
     }
 

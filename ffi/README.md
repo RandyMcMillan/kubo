@@ -38,6 +38,7 @@ Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
 - `kubo_node_peer_id(handle)` / `kubo_node_id(handle)` — peer identity.
 - `kubo_node_listening_addrs(handle)` / `kubo_node_api_addrs(handle)` / `kubo_swarm_peers(handle)` — addresses.
 - `kubo_node_connect(handle, addr)` — connect to a peer.
+- `kubo_node_start_api(handle, multiaddr)` — serve the HTTP API + WebUI.
 - `kubo_unixfs_add_bytes(handle, data, length)` / `kubo_unixfs_cat(handle, cid, out, out_len)` — UnixFS.
 - `kubo_block_put` / `kubo_block_get` / `kubo_block_stat` — raw blocks.
 - `kubo_git_*` — git repository helpers.

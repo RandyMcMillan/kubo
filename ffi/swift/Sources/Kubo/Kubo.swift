@@ -89,6 +89,18 @@ public struct Kubo {
             kubo_node_stop(handle)
         }
 
+        public func startApi(_ multiaddr: String) -> String? {
+            let p = multiaddr.withCString { a in
+                kubo_node_start_api(handle, UnsafeMutablePointer(mutating: a))
+            }
+            if let p = p {
+                let s = String(cString: p)
+                kubo_ffi_free_string(p)
+                return s
+            }
+            return nil
+        }
+
         public func swarmPeers() -> [String] {
             guard let p = kubo_swarm_peers(handle) else { return [] }
             let s = String(cString: p)
