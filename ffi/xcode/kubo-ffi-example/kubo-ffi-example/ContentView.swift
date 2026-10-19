@@ -207,12 +207,12 @@ struct ContentView: View {
                     }
                     // Add the bundled kubo repo to MFS
                     if let res = Bundle.main.resourcePath {
-                    let tarball = res + "/kubo.tar.gz"
-                    if FileManager.default.fileExists(atPath: tarball) {
-                        if let out2 = try? n.run("add --to-files /kubo.tar.gz \(tarball)") {
-                            self.log("mfs kubo.tar.gz: \(out2)")
+                        let kuboDir = res + "/kubo"
+                        if FileManager.default.fileExists(atPath: kuboDir) {
+                            if let out2 = try? n.run("add -r --to-files /kubo \(kuboDir)") {
+                                self.log("mfs kubo: \(out2)")
+                            }
                         }
-                    }
                     }
                     self.log("[auto] node started peer=\(self.peerId)")
                     self.log("[auto] listening: \(self.addrs)")
