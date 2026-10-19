@@ -199,6 +199,12 @@ struct ContentView: View {
             do {
                 if !FileManager.default.fileExists(atPath: repoPath) { try Kubo.initRepo(repoPath) }
                 let n = try Kubo.Node(repoPath: repoPath, online: true)
+                if let res = Bundle.main.resourcePath {
+                    let webuiDir = res + "/webui"
+                    if FileManager.default.fileExists(atPath: webuiDir) {
+                        n.addStatic(prefix: "/webui", dir: webuiDir)
+                    }
+                }
                 let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
                 let parts = apiUrl.split(separator: "/")
                 var host = "127.0.0.1"; var port = "5001"; var i = 0
