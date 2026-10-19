@@ -15,7 +15,7 @@ struct ContentView: View {
     @State private var logTimer: Timer? = nil
     @State private var peerTimer: Timer? = nil
     @State private var webUrl: String = ""
-    @State private var logExpanded: Bool = true
+    @State private var logExpanded: Bool = false
     @State private var selectedSection: SidebarSection = .status
 
     enum SidebarSection: String, CaseIterable, Identifiable {
