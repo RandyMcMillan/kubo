@@ -146,6 +146,10 @@ help:
 	@echo '  ipfswatch-install - Build and install ipfswatch into $$GOBIN'	@echo '  nofuse       - Build binary with no fuse support'
 	@echo '  install      - Build binary and install into $$GOBIN'
 	@echo '  mod_tidy     - Remove unused dependencies from go.mod files'
+	@echo '  ffi          - Build FFI Go package'
+	@echo '  ffi-shared   - Build FFI as C shared library'
+	@echo '  rust-ffi-test - Build and run Rust FFI integration tests'
+	@echo '  test_rust_ffi - Alias for rust-ffi-test'
 #	@echo '  dist_install - TODO: c.f. ./cmd/ipfs/dist/README.md'
 	@echo ''
 	@echo 'CLEANING TARGETS:'
@@ -166,5 +170,6 @@ help:
 	@echo '  test_go_lint            - Run golangci-lint'
 	@echo '  test_sharness           - Run sharness tests'
 	@echo '  coverage                - Collect coverage info from unit tests and sharness'
+	@echo '  test_rust_ffi           - Run Rust FFI integration tests'
 	@echo
 .PHONY: help
