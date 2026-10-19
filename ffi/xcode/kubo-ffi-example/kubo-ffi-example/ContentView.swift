@@ -27,8 +27,11 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(Section.allCases, selection: $selectedSection) { section in
-                Label(section.rawValue, systemImage: icon(for: section))
+            List(selection: $selectedSection) {
+                ForEach(Section.allCases) { section in
+                    Label(section.rawValue, systemImage: icon(for: section))
+                        .tag(section)
+                }
             }
             .navigationTitle("Kubo")
         } detail: {
