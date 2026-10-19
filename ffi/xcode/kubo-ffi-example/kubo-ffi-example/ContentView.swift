@@ -83,9 +83,7 @@ struct ContentView: View {
 
                         // Command runner
                         if !webUrl.isEmpty && selectedSection == .webui {
-                            GroupBox("WebUI") {
-                                WebView(urlString: webUrl).frame(minHeight: 360)
-                            }
+                            WebView(urlString: webUrl).frame(minHeight: 360)
                         }
 
                         // Log terminal (foldable)
