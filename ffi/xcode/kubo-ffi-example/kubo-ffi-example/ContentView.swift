@@ -256,6 +256,9 @@ struct ContentView: View {
                     self.addrs = n.listeningAddrs ?? ""
                     self.webUrl = "http://\(host):\(port)/webui/"
                     self.selectedSection = .webui
+                    if let out = try? n.run("files write /welcome.txt 'Hello from Kubo FFI' --create") {
+                        self.log("mfs: \(out)")
+                    }
                     self.log("[node started] peer=\(self.peerId)")
                     self.log("listening: \(self.addrs)")
                     self.log("webui: \(self.webUrl)")

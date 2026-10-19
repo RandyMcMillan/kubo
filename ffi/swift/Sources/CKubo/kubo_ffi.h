@@ -122,6 +122,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
+extern char* kubo_run_command_on_node(char* repoPath, uint64_t handle, int argc, char** argv);
 extern char* kubo_run_command(char* repoPath, int argc, char** argv);
 extern char* kubo_run_command_line(char* repoPath, char* line);
 extern char* kubo_ffi_last_error(void);

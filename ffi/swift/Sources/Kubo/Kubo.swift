@@ -1,4 +1,5 @@
 import CKubo
+import Darwin
 import Foundation
 
 public enum KuboError: Error {
@@ -88,6 +89,28 @@ public struct Kubo {
 
         public func stop() {
             kubo_node_stop(handle)
+        }
+
+        public func run(_ command: String) throws -> String {
+            let result: UnsafeMutablePointer<CChar>? = repoPath.withCString { rp in
+                command.withCString { cmd in
+                    let args = command.split(separator: " ").map { String($0) }
+                    let cargs = args.map { strdup($0) }
+                    defer { cargs.forEach { free($0) } }
+                    let argc = CInt(cargs.count)
+                    let argv = UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>.allocate(capacity: max(cargs.count, 1))
+                    defer { argv.deallocate() }
+                    for (i, p) in cargs.enumerated() { argv[i] = p }
+                    return kubo_run_command_on_node(UnsafeMutablePointer(mutating: rp), handle, argc, argv)
+                }
+            }
+            guard let p = result else {
+                let msg = Kubo.lastError() ?? "command failed"
+                throw KuboError.commandFailed(msg)
+            }
+            let s = String(cString: p)
+            kubo_ffi_free_string(p)
+            return s
         }
 
         public func addStatic(prefix: String, dir: String) {

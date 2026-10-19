@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -93,6 +94,53 @@ func buildEnvCached(repoPath string, req *cmds.Request) (cmds.Environment, error
 	}, nil
 }
 
+func runCommandOnNode(repoPath string, handle uint64, args []string) (string, error) {
+	ctx := context.Background()
+	cmdline := append([]string{"ipfs"}, args...)
+
+	req, err := cli.Parse(ctx, cmdline[1:], os.Stdin, kubocli.Root)
+	if err != nil {
+		return "", err
+	}
+	if req.Options == nil {
+		req.Options = map[string]interface{}{}
+	}
+	if repoPath != "" {
+		req.Options[commands.RepoDirOption] = repoPath
+	}
+
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+	if !ok {
+		return "", fmt.Errorf("invalid handle %d", handle)
+	}
+
+	plugins, _ := cachedPlugins(repoPath)
+	env := &oldcmds.Context{
+		ConfigRoot: repoPath,
+		ReqLog:     &oldcmds.ReqLog{},
+		Plugins:    plugins,
+		ConstructNode: func() (*core.IpfsNode, error) {
+			return h.node, nil
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	bc := &bufCloser{buf}
+	re, err := cmds.NewWriterResponseEmitter(bc, req)
+	if err != nil {
+		return "", err
+	}
+	exe := cmds.NewExecutor(req.Root)
+	if err := exe.Execute(req, re, env); err != nil {
+		re.Close()
+		return buf.String(), err
+	}
+	re.Close()
+	return buf.String(), nil
+}
+
 func runCommand(repoPath string, args []string) (string, error) {
 	ctx := context.Background()
 	cmdline := append([]string{"ipfs"}, args...)
@@ -126,6 +174,29 @@ func runCommand(repoPath string, args []string) (string, error) {
 	}
 	re.Close()
 	return buf.String(), nil
+}
+
+//export kubo_run_command_on_node
+func kubo_run_command_on_node(repoPath *C.char, handle C.uint64_t, argc C.int, argv **C.char) *C.char {
+	rp := ""
+	if repoPath != nil {
+		rp = C.GoString(repoPath)
+	}
+	args := make([]string, 0, int(argc))
+	for i := 0; i < int(argc); i++ {
+		ptr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(argv)) + uintptr(i)*unsafe.Sizeof((*C.char)(nil))))
+		args = append(args, C.GoString(*ptr))
+	}
+	out, err := runCommandOnNode(rp, uint64(handle), args)
+	if err != nil {
+		setError(err)
+	} else {
+		setError(nil)
+	}
+	if out == "" && err != nil {
+		out = err.Error()
+	}
+	return C.CString(out)
 }
 
 //export kubo_run_command
