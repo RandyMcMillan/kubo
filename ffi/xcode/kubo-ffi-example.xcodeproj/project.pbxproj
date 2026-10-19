@@ -87,6 +87,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4B12FAA93086922100B53876 /* Build configuration list for PBXNativeTarget "kubo-ffi-example" */;
 			buildPhases = (
+				SHELLSCRIPT001 /* Build FFI */,
 				4B12FA813086922000B53876 /* Sources */,
 				4B12FA823086922000B53876 /* Frameworks */,
 				4B12FA833086922000B53876 /* Resources */,
@@ -232,6 +233,24 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		SHELLSCRIPT001 /* Build FFI */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Build FFI";
+			outputPaths = (
+				"$(SRCROOT)/../swift/libkubo_ffi.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd $SRCROOT/../swift && make build";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		4B12FA813086922000B53876 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -282,6 +301,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "kubo-ffi-example/kubo-ffi-example//Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -328,6 +348,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "kubo-ffi-example/kubo-ffi-example//Info.plist";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
