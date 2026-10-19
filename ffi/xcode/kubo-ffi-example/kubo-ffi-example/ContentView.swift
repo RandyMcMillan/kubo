@@ -182,7 +182,7 @@ struct ContentView: View {
                 if let res = Bundle.main.resourcePath {
                     let webuiDir = res + "/webui"
                     if FileManager.default.fileExists(atPath: webuiDir) {
-                        n.addStatic(prefix: "/webui", dir: webuiDir)
+                        n.addStatic(prefix: "/webui-src", dir: webuiDir)
                     }
                 }
                 let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
@@ -197,7 +197,7 @@ struct ContentView: View {
                     self.node = n
                     self.peerId = n.peerId ?? ""
                     self.addrs = n.listeningAddrs ?? ""
-                    self.webUrl = "http://\(host):\(port)/webui"
+                    self.webUrl = "http://\(host):\(port)/webui/"
                     self.log("[auto] node started peer=\(self.peerId)")
                     self.log("[auto] listening: \(self.addrs)")
                     self.log("[auto] webui: \(self.webUrl)")
@@ -238,7 +238,7 @@ struct ContentView: View {
                 if let res = Bundle.main.resourcePath {
                     let webuiDir = res + "/webui"
                     if FileManager.default.fileExists(atPath: webuiDir) {
-                        n.addStatic(prefix: "/webui", dir: webuiDir)
+                        n.addStatic(prefix: "/webui-src", dir: webuiDir)
                     }
                 }
                 let apiUrl = n.startApi("/ip4/127.0.0.1/tcp/0") ?? ""
@@ -253,7 +253,7 @@ struct ContentView: View {
                     self.node = n
                     self.peerId = n.peerId ?? ""
                     self.addrs = n.listeningAddrs ?? ""
-                    self.webUrl = "http://\(host):\(port)/webui"
+                    self.webUrl = "http://\(host):\(port)/webui/"
                     self.log("[node started] peer=\(self.peerId)")
                     self.log("listening: \(self.addrs)")
                     self.log("webui: \(self.webUrl)")
