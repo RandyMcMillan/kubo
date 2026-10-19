@@ -105,6 +105,7 @@ test_swift_ffi:
 .PHONY: test_swift_ffi
 
 xcode-ffi:
+	cd ffi/swift && make build
 	cd ffi/xcode && swift build -Xlinker -L../swift -Xlinker -lkubo_ffi -Xlinker -framework -Xlinker Security -Xlinker -framework -Xlinker CoreFoundation -Xlinker -lresolv -Xlinker -lpthread -Xlinker -ldl
 .PHONY: xcode-ffi
 
