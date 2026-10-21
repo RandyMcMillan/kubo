@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -174,6 +175,101 @@ func kubo_init_repo(repoPath *C.char) int64 {
 	cfg.Routing.Type = config.NewOptionalString("none")
 	cfg.Bootstrap = []string{}
 	cfg.Discovery.MDNS.Enabled = false
+
+	if err := fsrepo.Init(path, cfg); err != nil {
+		setError(fmt.Errorf("init repo: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return 0
+}
+
+// kubo_init_repo_networked creates a repo configured for real network
+// participation: listens on all interfaces, enables mDNS + QUIC + relay +
+// AutoTLS, and uses Kubo's default bootstrap peers so the node joins the
+// public IPFS swarm. Use this for registry nodes that must be reachable.
+//
+//export kubo_init_repo_networked
+func kubo_init_repo_networked(repoPath *C.char) int64 {
+	if err := ensurePlugins(); err != nil {
+		setError(err)
+		return -1
+	}
+
+	path := C.GoString(repoPath)
+
+	identity, err := config.CreateIdentity(io.Discard, []options.KeyGenerateOption{
+		options.Key.Type(options.Ed25519Key),
+	})
+	if err != nil {
+		setError(fmt.Errorf("create identity: %w", err))
+		return -1
+	}
+
+	cfg, err := config.InitWithIdentity(identity)
+	if err != nil {
+		setError(fmt.Errorf("init config: %w", err))
+		return -1
+	}
+
+	cfg.Addresses.Swarm = []string{
+		"/ip4/0.0.0.0/tcp/0",
+		"/ip6/::/tcp/0",
+		"/ip4/0.0.0.0/udp/0/quic-v1",
+		"/ip6/::/udp/0/quic-v1",
+	}
+	cfg.Swarm.Transports.Network.QUIC = config.True
+	cfg.Swarm.Transports.Network.Relay = config.True
+	cfg.Swarm.Transports.Network.WebTransport = config.True
+	cfg.Swarm.Transports.Network.WebRTCDirect = config.True
+	cfg.Swarm.Transports.Network.Websocket = config.True
+	cfg.AutoTLS.Enabled = config.True
+	cfg.Routing.Type = config.NewOptionalString("auto")
+	// Keep Kubo's default bootstrap peers (autoconf fills them in).
+	cfg.Discovery.MDNS.Enabled = true
+
+	if err := fsrepo.Init(path, cfg); err != nil {
+		setError(fmt.Errorf("init repo: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return 0
+}
+
+// kubo_init_repo_with_config initialises a repo from a caller-supplied Kubo
+// config JSON blob, allowing full control over addresses, bootstrap, routing,
+// transports, etc. repoPath must not already contain a repo.
+//
+//export kubo_init_repo_with_config
+func kubo_init_repo_with_config(repoPath *C.char, configJSON *C.char) int64 {
+	if err := ensurePlugins(); err != nil {
+		setError(err)
+		return -1
+	}
+
+	path := C.GoString(repoPath)
+	jsonStr := C.GoString(configJSON)
+
+	identity, err := config.CreateIdentity(io.Discard, []options.KeyGenerateOption{
+		options.Key.Type(options.Ed25519Key),
+	})
+	if err != nil {
+		setError(fmt.Errorf("create identity: %w", err))
+		return -1
+	}
+
+	cfg, err := config.InitWithIdentity(identity)
+	if err != nil {
+		setError(fmt.Errorf("init config: %w", err))
+		return -1
+	}
+
+	if err := json.Unmarshal([]byte(jsonStr), cfg); err != nil {
+		setError(fmt.Errorf("parse config json: %w", err))
+		return -1
+	}
 
 	if err := fsrepo.Init(path, cfg); err != nil {
 		setError(fmt.Errorf("init repo: %w", err))
@@ -385,6 +481,69 @@ func kubo_node_start_api(handle uint64, multiaddr *C.char) *C.char {
 	return C.CString(listener.Multiaddr().String())
 }
 
+// kubo_node_start_gateway serves ONLY the IPFS gateway (/ipfs, /ipns) and any
+// registered static directories. It does NOT expose the writable CoreAPI
+// (/api/v0/*) or the WebUI, making it safe to bind to a public address for a
+// registry server. Call kubo_node_add_static BEFORE this.
+//
+//export kubo_node_start_gateway
+func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	addrStr := C.GoString(multiaddr)
+	addr, err := ma.NewMultiaddr(addrStr)
+	if err != nil {
+		setError(fmt.Errorf("parse multiaddr: %w", err))
+		return nil
+	}
+
+	listener, err := manet.Listen(addr)
+	if err != nil {
+		setError(fmt.Errorf("listen: %w", err))
+		return nil
+	}
+
+	opts := []corehttp.ServeOption{
+		corehttp.GatewayOption("/ipfs", "/ipns"),
+		corehttp.VersionOption(),
+	}
+
+	if len(h.staticDirs) > 0 {
+		dirs := h.staticDirs
+		opts = append(opts, func(n *core.IpfsNode, _ net.Listener, mux *http.ServeMux) (*http.ServeMux, error) {
+			for prefix, dir := range dirs {
+				fs := http.FileServer(http.Dir(dir))
+				mux.Handle(prefix, http.StripPrefix(prefix, fs))
+			}
+			return mux, nil
+		})
+	}
+
+	h.apiListener = listener
+	h.apiNetListener = manet.NetListener(listener)
+	h.apiServer = &http.Server{}
+
+	go func() {
+		handler, err := corehttp.MakeHandler(h.node, h.apiNetListener, opts...)
+		if err != nil {
+			setError(fmt.Errorf("make handler: %w", err))
+			return
+		}
+		h.apiServer.Handler = handler
+		h.apiServer.Serve(h.apiNetListener)
+	}()
+
+	setError(nil)
+	return C.CString(listener.Multiaddr().String())
+}
+
 //export kubo_node_api_addrs
 func kubo_node_api_addrs(handle uint64) *C.char {
 	nodesMu.RLock()
@@ -558,7 +717,7 @@ func kubo_unixfs_add_bytes(handle uint64, data *C.uint8_t, length C.size_t) *C.c
 	goData := C.GoBytes(unsafe.Pointer(data), C.int(length))
 	file := files.NewBytesFile(goData)
 
-	p, err := h.api.Unixfs().Add(h.ctx, file)
+	p, err := h.api.Unixfs().Add(h.ctx, file, options.Unixfs.Pin(true, ""))
 	if err != nil {
 		setError(fmt.Errorf("unixfs add: %w", err))
 		return nil

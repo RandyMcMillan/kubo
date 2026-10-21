@@ -33,13 +33,24 @@ Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
 - `kubo_version()` — Kubo version string.
 - `kubo_ffi_last_error()` / `kubo_ffi_free_string()` / `kubo_ffi_free_buffer()` — error and memory management.
 - `kubo_get_logs()` — accumulated Go/network log output since the last call.
-- `kubo_init_repo(repoPath)` — initialize a repository.
+- `kubo_init_repo(repoPath)` — initialize an isolated (loopback) repository.
+- `kubo_init_repo_networked(repoPath)` — initialize a repository configured for
+  real network participation (0.0.0.0 listen, mDNS, QUIC, relay, AutoTLS, auto
+  routing, default bootstrap peers).
+- `kubo_init_repo_with_config(repoPath, configJSON)` — initialize a repository
+  from a caller-supplied Kubo config JSON blob (full control).
 - `kubo_node_start(repoPath, online)` / `kubo_node_stop(handle)` — node lifecycle.
 - `kubo_node_peer_id(handle)` / `kubo_node_id(handle)` — peer identity.
 - `kubo_node_listening_addrs(handle)` / `kubo_node_api_addrs(handle)` / `kubo_swarm_peers(handle)` — addresses.
 - `kubo_node_connect(handle, addr)` — connect to a peer.
-- `kubo_node_start_api(handle, multiaddr)` — serve the HTTP API + WebUI.
-- `kubo_unixfs_add_bytes(handle, data, length)` / `kubo_unixfs_cat(handle, cid, out, out_len)` — UnixFS.
+- `kubo_node_start_api(handle, multiaddr)` — serve HTTP API + WebUI + gateway.
+  Exposes the writable CoreAPI; do not bind to a public address.
+- `kubo_node_start_gateway(handle, multiaddr)` — serve ONLY the IPFS gateway
+  (/ipfs, /ipns) and registered static dirs. Safe for public registry servers.
+- `kubo_node_add_static(handle, prefix, dir)` — register a static directory to
+  be served. Must be called BEFORE `kubo_node_start_api`/`kubo_node_start_gateway`.
+- `kubo_unixfs_add_bytes(handle, data, length)` — add bytes; content is PINNED.
+- `kubo_unixfs_cat(handle, cid, out, out_len)` — fetch bytes (binary-safe).
 - `kubo_block_put` / `kubo_block_get` / `kubo_block_stat` — raw blocks.
 - `kubo_git_*` — git repository helpers.
 - `kubo_nostr_relay_*` — Nostr relay helpers.
@@ -54,6 +65,30 @@ Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
 command through Kubo's own in-process command framework (`cli.Parse` +
 `cmds.NewExecutor` + `BuildEnv`). This gives complete protocol/CLI coverage
 without spawning a subprocess or a separate binary.
+
+Caveats for the command runner:
+- Command lines must NOT include the leading `ipfs` token (e.g. `"version"`,
+  not `"ipfs version"`).
+- The returned string is the command's emitted value, which is frequently a
+  Go struct debug dump rather than plain text. Do not use it for binary
+  content; use `kubo_unixfs_cat` / `kubo_block_get` for bytes.
+- `kubo_run_command_line` spawns its own node; prefer `kubo_run_command_on_node`
+  (and the Rust `Node::run_on_node`) when a node handle is already running.
+
+## Registry / public serving
+
+For a Cargo-style static registry served over IPFS, the recommended sequence
+is:
+
+1. `kubo_init_repo` (isolated) or `kubo_init_repo_networked` (public).
+2. `kubo_node_start(repoPath, true)`.
+3. `kubo_node_add_static(handle, "/", registryDir)` — register the registry dir.
+4. `kubo_unixfs_add_bytes(handle, crateBytes, len)` — publish a crate; content
+   is pinned automatically and a CID is returned.
+5. `kubo_node_start_gateway(handle, "/ip4/0.0.0.0/tcp/0")` — serve the
+   gateway (`/ipfs/<cid>`) and the static registry (`/config.json`,
+   `/de/mo/<crate>`) on one public listener. The writable CoreAPI is NOT
+   exposed.
 
 ## Testing
 
