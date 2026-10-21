@@ -7,6 +7,7 @@ package main
 import "C"
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 var (
@@ -360,4 +362,175 @@ func kubo_git_repo_diff_trees(handle uint64, old_hash *C.char, new_hash *C.char)
 
 	setError(nil)
 	return C.CString(patch.String())
+}
+
+//export kubo_git_fetch_all
+func kubo_git_fetch_all(path *C.char) int64 {
+	repo, err := git.PlainOpen(C.GoString(path))
+	if err != nil {
+		setError(fmt.Errorf("git fetch open: %w", err))
+		return -1
+	}
+	remotes, err := repo.Remotes()
+	if err != nil {
+		setError(fmt.Errorf("git fetch remotes: %w", err))
+		return -1
+	}
+	if len(remotes) == 0 {
+		setError(fmt.Errorf("git fetch: no remotes configured"))
+		return -1
+	}
+	for _, remote := range remotes {
+		name := remote.Config().Name
+		if err := repo.Fetch(&git.FetchOptions{RemoteName: name}); err != nil && err != git.NoErrAlreadyUpToDate {
+			setError(fmt.Errorf("git fetch %s: %w", name, err))
+			return -1
+		}
+	}
+	setError(nil)
+	return 0
+}
+
+//export kubo_git_blame
+func kubo_git_blame(path *C.char, file_path *C.char) *C.char {
+	repo, err := git.PlainOpen(C.GoString(path))
+	if err != nil {
+		setError(fmt.Errorf("git blame open: %w", err))
+		return nil
+	}
+	head, err := repo.Head()
+	if err != nil {
+		setError(fmt.Errorf("git blame head: %w", err))
+		return nil
+	}
+	commit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		setError(fmt.Errorf("git blame commit: %w", err))
+		return nil
+	}
+	blame, err := git.Blame(commit, C.GoString(file_path))
+	if err != nil {
+		setError(fmt.Errorf("git blame: %w", err))
+		return nil
+	}
+	type blameLine struct {
+		Author string `json:"author"`
+		Name   string `json:"name"`
+		Text   string `json:"text"`
+		Date   int64  `json:"date"`
+		Hash   string `json:"hash"`
+	}
+	var lines []blameLine
+	for _, l := range blame.Lines {
+		lines = append(lines, blameLine{
+			Author: l.Author,
+			Name:   l.Author,
+			Text:   l.Text,
+			Date:   l.Date.Unix(),
+			Hash:   l.Hash.String(),
+		})
+	}
+	result := map[string]interface{}{
+		"path":  blame.Path,
+		"rev":   blame.Rev.String(),
+		"lines": lines,
+	}
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		setError(fmt.Errorf("git blame marshal: %w", err))
+		return nil
+	}
+	setError(nil)
+	return C.CString(string(jsonBytes))
+}
+
+//export kubo_git_log
+func kubo_git_log(path *C.char, max_count C.int) *C.char {
+	repo, err := git.PlainOpen(C.GoString(path))
+	if err != nil {
+		setError(fmt.Errorf("git log open: %w", err))
+		return nil
+	}
+	logOptions := &git.LogOptions{}
+	commits, err := repo.Log(logOptions)
+	if err != nil {
+		if err == plumbing.ErrReferenceNotFound {
+			setError(nil)
+			return C.CString("[]")
+		}
+		setError(fmt.Errorf("git log: %w", err))
+		return nil
+	}
+	defer commits.Close()
+
+	type commitInfo struct {
+		Hash    string `json:"hash"`
+		Message string `json:"message"`
+		Author  string `json:"author"`
+		Email   string `json:"email"`
+		Date    int64  `json:"date"`
+	}
+	var result []commitInfo
+	count := 0
+	max := int(max_count)
+	if max <= 0 {
+		max = 50
+	}
+	err = commits.ForEach(func(c *object.Commit) error {
+		if count >= max {
+			return io.EOF
+		}
+		result = append(result, commitInfo{
+			Hash:    c.Hash.String(),
+			Message: c.Message,
+			Author:  c.Author.Name,
+			Email:   c.Author.Email,
+			Date:    c.Author.When.Unix(),
+		})
+		count++
+		return nil
+	})
+	if err != nil && err != io.EOF {
+		setError(fmt.Errorf("git log iterate: %w", err))
+		return nil
+	}
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		setError(fmt.Errorf("git log marshal: %w", err))
+		return nil
+	}
+	setError(nil)
+	return C.CString(string(jsonBytes))
+}
+
+//export kubo_git_tags
+func kubo_git_tags(path *C.char) *C.char {
+	repo, err := git.PlainOpen(C.GoString(path))
+	if err != nil {
+		setError(fmt.Errorf("git tags open: %w", err))
+		return nil
+	}
+	tags, err := repo.Tags()
+	if err != nil {
+		setError(fmt.Errorf("git tags: %w", err))
+		return nil
+	}
+	defer tags.Close()
+
+	var result []string
+	err = tags.ForEach(func(ref *plumbing.Reference) error {
+		result = append(result, ref.Name().Short())
+		return nil
+	})
+	if err != nil {
+		setError(fmt.Errorf("git tags iterate: %w", err))
+		return nil
+	}
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		setError(fmt.Errorf("git tags marshal: %w", err))
+		return nil
+	}
+	setError(nil)
+	return C.CString(string(jsonBytes))
 }

@@ -52,8 +52,13 @@ Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
 - `kubo_unixfs_add_bytes(handle, data, length)` — add bytes; content is PINNED.
 - `kubo_unixfs_cat(handle, cid, out, out_len)` — fetch bytes (binary-safe).
 - `kubo_block_put` / `kubo_block_get` / `kubo_block_stat` — raw blocks.
-- `kubo_git_*` — git repository helpers.
-- `kubo_nostr_relay_*` — Nostr relay helpers.
+- `kubo_git_*` — git repository helpers (clone, open, head, init, branches,
+  remotes, create_branch, commit_lookup, tree_entries, blob_read, status,
+  diff_trees, fetch_all, blame, log, tags).
+- `kubo_nostr_*` — Nostr key/event/relay helpers (generate_key,
+  get_public_key, event_sign, event_sign_with_tags, event_verify, nip19
+  encode/decode, nip05 verify/query, relay connect/close/subscribe/drain/
+  unsubscribe/publish).
 - `kubo_watch_path(repoPath, watchPath)` / `kubo_watch_stop(handle)` — directory watcher (ipfswatch).
 - `kubo_run_command(repoPath, argc, argv)` / `kubo_run_command_line(repoPath, line)` —
   generic runner that executes **any** Kubo command in-process (full coverage

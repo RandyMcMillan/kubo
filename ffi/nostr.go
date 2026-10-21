@@ -64,6 +64,36 @@ func kubo_nostr_event_sign(sk *C.char, content *C.char, kind C.int) *C.char {
 	return C.CString(string(jsonBytes))
 }
 
+//export kubo_nostr_event_sign_with_tags
+func kubo_nostr_event_sign_with_tags(sk *C.char, content *C.char, kind C.int, tagsJSON *C.char) *C.char {
+	var tags nostr.Tags
+	if err := json.Unmarshal([]byte(C.GoString(tagsJSON)), &tags); err != nil {
+		setError(fmt.Errorf("unmarshal tags: %w", err))
+		return nil
+	}
+
+	evt := nostr.Event{
+		CreatedAt: nostr.Now(),
+		Kind:      int(kind),
+		Content:   C.GoString(content),
+		Tags:      tags,
+	}
+
+	if err := evt.Sign(C.GoString(sk)); err != nil {
+		setError(fmt.Errorf("sign event: %w", err))
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(evt)
+	if err != nil {
+		setError(fmt.Errorf("marshal event: %w", err))
+		return nil
+	}
+
+	setError(nil)
+	return C.CString(string(jsonBytes))
+}
+
 //export kubo_nostr_event_verify
 func kubo_nostr_event_verify(jsonStr *C.char) int64 {
 	var evt nostr.Event
@@ -331,6 +361,100 @@ func kubo_nostr_relay_publish(handle uint64, eventJSON *C.char) int64 {
 		return -1
 	}
 
+	setError(nil)
+	return 0
+}
+
+var (
+	nostrSubsMu  sync.RWMutex
+	nostrSubs           = make(map[uint64]*nostr.Subscription)
+	nostrSubNext uint64 = 1
+)
+
+//export kubo_nostr_relay_subscribe
+func kubo_nostr_relay_subscribe(handle uint64, filterJSON *C.char) uint64 {
+	nostrRelaysMu.RLock()
+	h, ok := nostrRelays[handle]
+	nostrRelaysMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid relay handle %d", handle))
+		return 0
+	}
+
+	var filter nostr.Filter
+	if err := json.Unmarshal([]byte(C.GoString(filterJSON)), &filter); err != nil {
+		setError(fmt.Errorf("unmarshal filter: %w", err))
+		return 0
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	sub, err := h.relay.Subscribe(ctx, nostr.Filters{filter})
+	if err != nil {
+		setError(fmt.Errorf("relay subscribe: %w", err))
+		return 0
+	}
+
+	nostrSubsMu.Lock()
+	subHandle := nostrSubNext
+	nostrSubNext++
+	nostrSubs[subHandle] = sub
+	nostrSubsMu.Unlock()
+
+	setError(nil)
+	return subHandle
+}
+
+//export kubo_nostr_relay_drain
+func kubo_nostr_relay_drain(subHandle uint64) *C.char {
+	nostrSubsMu.RLock()
+	sub, ok := nostrSubs[subHandle]
+	nostrSubsMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid subscription handle %d", subHandle))
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	select {
+	case evt := <-sub.Events:
+		if evt == nil {
+			setError(nil)
+			return nil
+		}
+		jsonBytes, err := json.Marshal(evt)
+		if err != nil {
+			setError(fmt.Errorf("marshal event: %w", err))
+			return nil
+		}
+		setError(nil)
+		return C.CString(string(jsonBytes))
+	case <-ctx.Done():
+		setError(nil)
+		return nil
+	}
+}
+
+//export kubo_nostr_relay_unsubscribe
+func kubo_nostr_relay_unsubscribe(subHandle uint64) int64 {
+	nostrSubsMu.Lock()
+	sub, ok := nostrSubs[subHandle]
+	if ok {
+		delete(nostrSubs, subHandle)
+	}
+	nostrSubsMu.Unlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid subscription handle %d", subHandle))
+		return -1
+	}
+
+	sub.Unsub()
 	setError(nil)
 	return 0
 }
