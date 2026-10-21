@@ -53,6 +53,23 @@ extern "C" {
     // watch
     fn kubo_watch_path(repo_path: *const c_char, watch_path: *const c_char) -> u64;
     fn kubo_watch_stop(handle: u64) -> i64;
+
+    // git (extended)
+    fn kubo_git_fetch_all(path: *const c_char) -> i64;
+    fn kubo_git_blame(path: *const c_char, file_path: *const c_char) -> *mut c_char;
+    fn kubo_git_log(path: *const c_char, max_count: c_int) -> *mut c_char;
+    fn kubo_git_tags(path: *const c_char) -> *mut c_char;
+
+    // nostr (extended)
+    fn kubo_nostr_event_sign_with_tags(
+        sk: *const c_char,
+        content: *const c_char,
+        kind: c_int,
+        tags_json: *const c_char,
+    ) -> *mut c_char;
+    fn kubo_nostr_relay_subscribe(handle: u64, filter_json: *const c_char) -> u64;
+    fn kubo_nostr_relay_drain(sub_handle: u64) -> *mut c_char;
+    fn kubo_nostr_relay_unsubscribe(sub_handle: u64) -> i64;
 }
 
 // ---------------------------------------------------------------------------
@@ -396,6 +413,83 @@ impl Drop for WatchHandle {
     fn drop(&mut self) {
         unsafe {
             kubo_watch_stop(self.0);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Git helpers (extended)
+// ---------------------------------------------------------------------------
+
+pub fn git_fetch_all(path: &str) -> Result<(), String> {
+    let c = cstr(path)?;
+    let rc = unsafe { kubo_git_fetch_all(c.as_ptr()) };
+    if rc != 0 {
+        Err(last_error().unwrap_or_else(|| "fetch failed".into()))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn git_blame(path: &str, file_path: &str) -> Result<String, String> {
+    let p = cstr(path)?;
+    let f = cstr(file_path)?;
+    from_cstr(unsafe { kubo_git_blame(p.as_ptr(), f.as_ptr()) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "blame failed".into()))
+}
+
+pub fn git_log(path: &str, max_count: i32) -> Result<String, String> {
+    let c = cstr(path)?;
+    from_cstr(unsafe { kubo_git_log(c.as_ptr(), max_count) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "log failed".into()))
+}
+
+pub fn git_tags(path: &str) -> Result<String, String> {
+    let c = cstr(path)?;
+    from_cstr(unsafe { kubo_git_tags(c.as_ptr()) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "tags failed".into()))
+}
+
+// ---------------------------------------------------------------------------
+// Nostr helpers (extended)
+// ---------------------------------------------------------------------------
+
+pub fn nostr_event_sign_with_tags(
+    sk: &str,
+    content: &str,
+    kind: i32,
+    tags_json: &str,
+) -> Result<String, String> {
+    let s = cstr(sk)?;
+    let c = cstr(content)?;
+    let t = cstr(tags_json)?;
+    from_cstr(unsafe { kubo_nostr_event_sign_with_tags(s.as_ptr(), c.as_ptr(), kind, t.as_ptr()) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "sign failed".into()))
+}
+
+pub struct NostrRelaySub(u64);
+
+impl NostrRelaySub {
+    pub fn subscribe(relay_handle: u64, filter_json: &str) -> Result<Self, String> {
+        let f = cstr(filter_json)?;
+        let h = unsafe { kubo_nostr_relay_subscribe(relay_handle, f.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "subscribe failed".into()))
+        } else {
+            Ok(NostrRelaySub(h))
+        }
+    }
+
+    pub fn drain(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_nostr_relay_drain(self.0) })
+    }
+
+    pub fn unsubscribe(&self) -> Result<(), String> {
+        let rc = unsafe { kubo_nostr_relay_unsubscribe(self.0) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "unsubscribe failed".into()))
+        } else {
+            Ok(())
         }
     }
 }
