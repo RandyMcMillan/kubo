@@ -518,7 +518,83 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 	if len(h.staticDirs) > 0 {
 		dirs := h.staticDirs
 		opts = append(opts, func(n *core.IpfsNode, _ net.Listener, mux *http.ServeMux) (*http.ServeMux, error) {
+			// Crate redirect handler (if registered via kubo_node_add_crate_redirect).
+			if regDir, ok := dirs["__crate_redirect__"]; ok {
+				mux.HandleFunc("/crates/", func(w http.ResponseWriter, r *http.Request) {
+					trimmed := strings.TrimPrefix(r.URL.Path, "/crates/")
+					parts := strings.Split(trimmed, "/")
+					if len(parts) < 3 {
+						http.NotFound(w, r)
+						return
+					}
+					crateName := parts[1]
+					version := strings.TrimSuffix(parts[2], ".crate")
+
+					// Compute the index file path using Margo's prefix logic.
+					var indexParts []string
+					n := len(crateName)
+					if n == 1 {
+						indexParts = []string{"1"}
+					} else if n == 2 {
+						indexParts = []string{"2"}
+					} else if n == 3 {
+						indexParts = []string{"3", crateName[0:1]}
+					} else if n >= 4 {
+						indexParts = []string{crateName[0:2], crateName[2:4]}
+					}
+					indexPath := filepath.Join(append([]string{regDir}, indexParts...)...)
+					indexPath = filepath.Join(indexPath, crateName)
+					data, err := os.ReadFile(indexPath)
+					if err != nil {
+						http.NotFound(w, r)
+						return
+					}
+
+					var cid string
+					for _, line := range strings.Split(string(data), "\n") {
+						line = strings.TrimSpace(line)
+						if line == "" {
+							continue
+						}
+						var entry map[string]interface{}
+						if err := json.Unmarshal([]byte(line), &entry); err != nil {
+							continue
+						}
+						if v, ok := entry["vers"].(string); ok && v == version {
+							if c, ok := entry["ipfs_cid"].(string); ok && c != "" {
+								cid = c
+							}
+							break
+						}
+					}
+
+					if cid != "" {
+						http.Redirect(w, r, "/ipfs/"+cid, http.StatusFound)
+						return
+					}
+
+					// Fall back to serving the file from disk.
+					filePath := filepath.Join(append([]string{regDir, "crates"}, indexParts...)...)
+					filePath = filepath.Join(filePath, crateName, version+".crate")
+					f, err := os.Open(filePath)
+					if err != nil {
+						http.NotFound(w, r)
+						return
+					}
+					defer f.Close()
+					fi, err := f.Stat()
+					if err != nil {
+						http.NotFound(w, r)
+						return
+					}
+					http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
+				})
+			}
+
 			for prefix, dir := range dirs {
+				if prefix == "__crate_redirect__" {
+					continue
+				}
 				fs := http.FileServer(http.Dir(dir))
 				mux.Handle(prefix, http.StripPrefix(prefix, fs))
 			}
@@ -542,6 +618,29 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 
 	setError(nil)
 	return C.CString(listener.Multiaddr().String())
+}
+
+// kubo_node_add_crate_redirect registers a handler on the gateway that, for
+// /crates/{prefix}/{crate}/{version}.crate requests, looks up the ipfs_cid in
+// the registry's index files and 302-redirects to /ipfs/<cid>. Call before
+// kubo_node_start_gateway. registryDir is the registry root directory.
+//
+//export kubo_node_add_crate_redirect
+func kubo_node_add_crate_redirect(handle uint64, registryDir *C.char) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+	if h.staticDirs == nil {
+		h.staticDirs = make(map[string]string)
+	}
+	// Stash the registry dir under a special key so start_gateway can use it.
+	h.staticDirs["__crate_redirect__"] = C.GoString(registryDir)
+	setError(nil)
+	return 0
 }
 
 //export kubo_node_api_addrs
