@@ -1,13 +1,15 @@
 use crossterm::event::{self, Event, KeyCode};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use crossterm::ExecutableCommand;
 use kubo_ffi::{self, Node};
+use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Text};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
-use ratatui::backend::CrosstermBackend;
 use std::io::stdout;
 use std::time::{Duration, Instant};
 
@@ -43,20 +45,37 @@ fn main() -> std::io::Result<()> {
         terminal.draw(|f| {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Length(3), Constraint::Min(1), Constraint::Length(8)])
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Min(1),
+                    Constraint::Length(8),
+                ])
                 .split(f.area());
 
-            let title = Paragraph::new(status.clone())
-                .block(Block::default().borders(Borders::ALL).title("Kubo IPFS FFI - TUI"));
+            let title = Paragraph::new(status.clone()).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Kubo IPFS FFI - TUI"),
+            );
             f.render_widget(title, chunks[0]);
 
             let peer_text = if peers.is_empty() {
                 Text::from("No peers yet...".to_string())
             } else {
-                Text::from(peers.iter().take(20).cloned().collect::<Vec<_>>().join("\n"))
+                Text::from(
+                    peers
+                        .iter()
+                        .take(20)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                )
             };
-            let peers_widget = Paragraph::new(peer_text)
-                .block(Block::default().borders(Borders::ALL).title(format!("Peers ({})", peers.len())));
+            let peers_widget = Paragraph::new(peer_text).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!("Peers ({})", peers.len())),
+            );
             f.render_widget(peers_widget, chunks[1]);
 
             let logs_widget = Paragraph::new(Text::from(logs.clone()))

@@ -3,7 +3,9 @@ use kubo_ffi::Node;
 use std::fs;
 
 fn main() {
-    let base = std::env::args().nth(1).unwrap_or_else(|| "/tmp/kubo-smoke".into());
+    let base = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/tmp/kubo-smoke".into());
     let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(&base).unwrap();
 
@@ -28,14 +30,21 @@ fn main() {
     // verify gateway serves bytes
     let out = std::process::Command::new("curl")
         .args(["-s", &format!("{}/ipfs/{}", url, cid)])
-        .output().unwrap();
+        .output()
+        .unwrap();
     assert_eq!(out.stdout, data, "gateway bytes mismatch");
     println!("gateway /ipfs/<cid> -> exact bytes OK");
 
     // node B: fetch by CID
     kubo_ffi::init_repo(&format!("{}/repoB", base)).unwrap();
     let b = Node::start(&format!("{}/repoB", base), true).unwrap();
-    let first_addr = a.listening_addrs().unwrap().lines().next().unwrap().to_string();
+    let first_addr = a
+        .listening_addrs()
+        .unwrap()
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
     let dial = format!("{}/p2p/{}", first_addr, a.peer_id().unwrap());
     assert!(b.connect(&dial), "connect failed");
     let got = b.unixfs_cat(&cid).unwrap();
@@ -45,7 +54,10 @@ fn main() {
     // networked init
     kubo_ffi::init_repo_networked(&format!("{}/repoN", base)).unwrap();
     let n = Node::start(&format!("{}/repoN", base), true).unwrap();
-    println!("networked node listening: {}", n.listening_addrs().unwrap().lines().next().unwrap());
+    println!(
+        "networked node listening: {}",
+        n.listening_addrs().unwrap().lines().next().unwrap()
+    );
     drop(n);
 
     println!("ALL SMOKE CHECKS PASSED");

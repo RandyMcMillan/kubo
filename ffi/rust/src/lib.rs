@@ -191,7 +191,11 @@ impl Node {
 
     pub fn swarm_peers(&self) -> Vec<String> {
         match from_cstr(unsafe { kubo_swarm_peers(self.0) }) {
-            Some(s) => s.lines().map(|l| l.to_string()).filter(|l| !l.is_empty()).collect(),
+            Some(s) => s
+                .lines()
+                .map(|l| l.to_string())
+                .filter(|l| !l.is_empty())
+                .collect(),
             None => vec![],
         }
     }
@@ -219,13 +223,21 @@ impl Node {
     }
 
     pub fn add_static(&self, prefix: &str, dir: &str) -> bool {
-        let p = match cstr(prefix) { Ok(c) => c, Err(_) => return false };
-        let d = match cstr(dir) { Ok(c) => c, Err(_) => return false };
+        let p = match cstr(prefix) {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+        let d = match cstr(dir) {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
         unsafe { kubo_node_add_static(self.0, p.as_ptr(), d.as_ptr()) == 0 }
     }
 
     pub fn stop(&self) {
-        unsafe { kubo_node_stop(self.0); }
+        unsafe {
+            kubo_node_stop(self.0);
+        }
     }
 
     // ---- content ----
@@ -241,9 +253,7 @@ impl Node {
         let c = cstr(cid)?;
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
-        let rc = unsafe {
-            kubo_unixfs_cat(self.0, c.as_ptr(), &mut out, &mut out_len)
-        };
+        let rc = unsafe { kubo_unixfs_cat(self.0, c.as_ptr(), &mut out, &mut out_len) };
         if rc != 0 {
             return Err(last_error().unwrap_or_else(|| "cat failed".into()));
         }
@@ -270,13 +280,18 @@ impl Node {
         for a in args {
             cstrings.push(cstr(a)?);
         }
-        let mut argv: Vec<*mut c_char> = cstrings.iter().map(|c| c.as_ptr() as *mut c_char).collect();
+        let mut argv: Vec<*mut c_char> =
+            cstrings.iter().map(|c| c.as_ptr() as *mut c_char).collect();
         let p = unsafe {
             kubo_run_command_on_node(
                 rp.as_ptr(),
                 self.0,
                 argv.len() as c_int,
-                if argv.is_empty() { std::ptr::null_mut() } else { argv.as_mut_ptr() },
+                if argv.is_empty() {
+                    std::ptr::null_mut()
+                } else {
+                    argv.as_mut_ptr()
+                },
             )
         };
         // Keep cstrings alive for the duration of the call (already done above).
@@ -316,7 +331,9 @@ impl Node {
 
 impl Drop for Node {
     fn drop(&mut self) {
-        unsafe { kubo_node_stop(self.0); }
+        unsafe {
+            kubo_node_stop(self.0);
+        }
     }
 }
 
@@ -367,7 +384,9 @@ impl WatchHandle {
 
 impl Drop for WatchHandle {
     fn drop(&mut self) {
-        unsafe { kubo_watch_stop(self.0); }
+        unsafe {
+            kubo_watch_stop(self.0);
+        }
     }
 }
 

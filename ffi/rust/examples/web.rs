@@ -21,8 +21,12 @@ fn main() {
                     let mut port = "5001";
                     let mut i = 0;
                     while i < parts.len() {
-                        if parts[i] == "ip4" && i + 1 < parts.len() { host = parts[i+1]; }
-                        if parts[i] == "tcp" && i + 1 < parts.len() { port = parts[i+1]; }
+                        if parts[i] == "ip4" && i + 1 < parts.len() {
+                            host = parts[i + 1];
+                        }
+                        if parts[i] == "tcp" && i + 1 < parts.len() {
+                            port = parts[i + 1];
+                        }
                         i += 1;
                     }
                     println!("WebUI: http://{}:{}/webui", host, port);

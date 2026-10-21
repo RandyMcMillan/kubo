@@ -13,7 +13,8 @@ fn main() {
         Ok(node) => {
             println!("peer id: {:?}", node.peer_id());
             // Dial a bootstrap peer to demonstrate real network connectivity
-            let bootstrap = "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN";
+            let bootstrap =
+                "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN";
             println!("dialing bootstrap: {}", bootstrap);
             let ok = node.connect(bootstrap);
             println!("connect result: {}", ok);

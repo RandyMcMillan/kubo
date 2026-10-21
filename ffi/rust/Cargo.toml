@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "kubo-ffi"
 version = "0.1.0"
