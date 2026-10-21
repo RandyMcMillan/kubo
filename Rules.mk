@@ -164,7 +164,7 @@ help:
 	@echo '  all          - print this help message'
 	@echo '  build        - Build binary at ./cmd/ipfs/ipfs'
 	@echo '  ipfswatch    - Build binary at ./cmd/ipfswatch/ipfswatch'
-	@echo '  ipfswatch-install - Build and install ipfswatch into $$GOBIN'	@echo '  nofuse       - Build binary with no fuse support'
+	@echo '  install-ipfswatch - Build and install ipfswatch into $$GOBIN'	@echo '  nofuse       - Build binary with no fuse support'
 	@echo '  install      - Build binary and install into $$GOBIN'
 	@echo '  mod_tidy     - Remove unused dependencies from go.mod files'
 	@echo '  ffi          - Build FFI Go package'
