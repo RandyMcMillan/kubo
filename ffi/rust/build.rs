@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
+    let manifest_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
     let ffi_dir = manifest_dir.join("..");
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     let target = env::var("TARGET").expect("TARGET not set");
@@ -49,8 +50,8 @@ fn main() {
 
     // Pin GOTOOLCHAIN to the Go version declared in go.mod so that the
     // build is reproducible even when the host has a newer Go installed.
-    let go_mod_text = std::fs::read_to_string(ffi_dir.join("go.mod"))
-        .expect("failed to read go.mod");
+    let go_mod_text =
+        std::fs::read_to_string(ffi_dir.join("go.mod")).expect("failed to read go.mod");
     let toolchain = go_mod_text
         .lines()
         .find_map(|line| {
@@ -74,13 +75,24 @@ fn main() {
 
     // Only rebuild when Go sources change.
     for src in &[
-        "kubo.go", "libp2p.go", "git.go", "nostr.go", "error.go",
-        "command.go", "main.go",
+        "kubo.go",
+        "libp2p.go",
+        "git.go",
+        "nostr.go",
+        "error.go",
+        "command.go",
+        "main.go",
     ] {
         println!("cargo:rerun-if-changed={}", ffi_dir.join(src).display());
     }
-    println!("cargo:rerun-if-changed={}", ffi_dir.join("go.mod").display());
-    println!("cargo:rerun-if-changed={}", ffi_dir.join("go.sum").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        ffi_dir.join("go.mod").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        ffi_dir.join("go.sum").display()
+    );
 
     let mut go_build = Command::new(&go);
     go_build
@@ -104,10 +116,7 @@ fn main() {
     // When cross-compiling for Apple platforms, the Go toolchain needs an
     // Apple-specific C cross-compiler.
     if let Some((sdk, cc, cxx)) = apple_compiler(&target) {
-        go_build
-            .env("CC", &cc)
-            .env("CXX", &cxx)
-            .env("SDKROOT", sdk);
+        go_build.env("CC", &cc).env("CXX", &cxx).env("SDKROOT", sdk);
 
         let deployment_target = env::var("IPHONEOS_DEPLOYMENT_TARGET")
             .or_else(|_| env::var("MACOSX_DEPLOYMENT_TARGET"))
@@ -178,8 +187,12 @@ fn apple_compiler(target: &str) -> Option<(String, String, String)> {
         _ => return None,
     };
 
-    let cc = format!("xcrun -sdk {} clang {}", sdk, target_flag).trim().to_string();
-    let cxx = format!("xcrun -sdk {} clang++ {}", sdk, target_flag).trim().to_string();
+    let cc = format!("xcrun -sdk {} clang {}", sdk, target_flag)
+        .trim()
+        .to_string();
+    let cxx = format!("xcrun -sdk {} clang++ {}", sdk, target_flag)
+        .trim()
+        .to_string();
 
     Some((sdk.to_string(), cc, cxx))
 }

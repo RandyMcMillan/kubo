@@ -8,6 +8,10 @@ import "C"
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -332,6 +336,67 @@ func kubo_nostr_relay_close(handle uint64) int64 {
 	h.relay.Close()
 	setError(nil)
 	return 0
+}
+
+// kubo_nostr_nsec_to_swarm_key derives a 32-byte IPFS swarm key from a
+// Nostr private key (nsec bech32 or hex). The swarm key is formatted as
+// an IPFS pre-shared key (PSK) and can be used with kubo_init_repo_with_config
+// or stored as a swarm.key file.
+//
+//export kubo_nostr_nsec_to_swarm_key
+func kubo_nostr_nsec_to_swarm_key(nsecOrHex *C.char) *C.char {
+	input := C.GoString(nsecOrHex)
+
+	var rawBytes []byte
+
+	// Try nsec bech32 decode first.
+	if prefix, value, err := nip19.Decode(input); err == nil && prefix == "nsec" {
+		switch v := value.(type) {
+		case []byte:
+			rawBytes = v
+		case string:
+			b, err := hex.DecodeString(v)
+			if err == nil && len(b) == 32 {
+				rawBytes = b
+			}
+		}
+	}
+
+	// Fall back to hex decode.
+	if rawBytes == nil {
+		b, err := hex.DecodeString(input)
+		if err != nil || len(b) != 32 {
+			setError(fmt.Errorf("invalid nostr private key: expected nsec or 32-byte hex"))
+			return nil
+		}
+		rawBytes = b
+	}
+
+	// Derive swarm key: SHA256 of the private key bytes.
+	h := sha256.Sum256(rawBytes)
+	b64 := base64.StdEncoding.EncodeToString(h[:])
+
+	swarmKey := "/key/swarm/psk/1.0.0/\n/base64/\n" + b64
+
+	setError(nil)
+	return C.CString(swarmKey)
+}
+
+// kubo_swarm_key_generate generates a random 32-byte IPFS swarm key.
+//
+//export kubo_swarm_key_generate
+func kubo_swarm_key_generate() *C.char {
+	b := make([]byte, 32)
+	// Use crypto/rand for secure randomness.
+	if _, err := rand.Read(b); err != nil {
+		setError(fmt.Errorf("generate swarm key: %w", err))
+		return nil
+	}
+	b64 := base64.StdEncoding.EncodeToString(b)
+	swarmKey := "/key/swarm/psk/1.0.0/\n/base64/\n" + b64
+
+	setError(nil)
+	return C.CString(swarmKey)
 }
 
 //export kubo_nostr_relay_publish

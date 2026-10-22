@@ -364,6 +364,31 @@ func kubo_git_repo_diff_trees(handle uint64, old_hash *C.char, new_hash *C.char)
 	return C.CString(patch.String())
 }
 
+//export kubo_git_push
+func kubo_git_push(path *C.char, remote_name *C.char) int64 {
+	repo, err := git.PlainOpen(C.GoString(path))
+	if err != nil {
+		setError(fmt.Errorf("git push open: %w", err))
+		return -1
+	}
+	remote, err := repo.Remote(C.GoString(remote_name))
+	if err != nil {
+		// Try default remote
+		remote, err = repo.Remote("origin")
+		if err != nil {
+			setError(fmt.Errorf("git push remote: %w", err))
+			return -1
+		}
+	}
+	err = remote.Push(&git.PushOptions{})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		setError(fmt.Errorf("git push: %w", err))
+		return -1
+	}
+	setError(nil)
+	return 0
+}
+
 //export kubo_git_fetch_all
 func kubo_git_fetch_all(path *C.char) int64 {
 	repo, err := git.PlainOpen(C.GoString(path))

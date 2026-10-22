@@ -70,6 +70,10 @@ extern "C" {
     fn kubo_nostr_relay_subscribe(handle: u64, filter_json: *const c_char) -> u64;
     fn kubo_nostr_relay_drain(sub_handle: u64) -> *mut c_char;
     fn kubo_nostr_relay_unsubscribe(sub_handle: u64) -> i64;
+
+    // swarm key helpers
+    fn kubo_nostr_nsec_to_swarm_key(nsec_or_hex: *const c_char) -> *mut c_char;
+    fn kubo_swarm_key_generate() -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -451,6 +455,25 @@ pub fn git_tags(path: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// Swarm key helpers (Nostr → IPFS private swarm)
+// ---------------------------------------------------------------------------
+
+/// Derive an IPFS swarm key from a Nostr private key (nsec bech32 or hex).
+/// The returned string is in IPFS PSK format and can be written to a swarm.key
+/// file or passed to init_repo_with_config / kubo_init_repo_with_swarm_key.
+pub fn nostr_nsec_to_swarm_key(nsec_or_hex: &str) -> Result<String, String> {
+    let c = cstr(nsec_or_hex)?;
+    from_cstr(unsafe { kubo_nostr_nsec_to_swarm_key(c.as_ptr()) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "swarm key derivation failed".into()))
+}
+
+/// Generate a random IPFS swarm key.
+pub fn swarm_key_generate() -> Result<String, String> {
+    from_cstr(unsafe { kubo_swarm_key_generate() })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "swarm key generation failed".into()))
+}
+
+// ---------------------------------------------------------------------------
 // Nostr helpers (extended)
 // ---------------------------------------------------------------------------
 
@@ -501,5 +524,23 @@ mod tests {
     #[test]
     fn version_works() {
         assert!(!version().is_empty());
+    }
+
+    #[test]
+    fn nsec_to_swarm_key() {
+        let nsec = "nsec18qvaqktundgyyc74vdxdl907tq0vam2aad2ptnku9cjw8ethdgdqzmwqct";
+        let key = nostr_nsec_to_swarm_key(nsec).unwrap();
+        assert!(key.contains("/key/swarm/psk/1.0.0/"));
+        println!("swarm key from nsec:\n{}", key);
+
+        // hex should produce same key
+        let hex = "3819d0597c9b504263d5634cdf95fe581eceed5deb5415cedc2e24e3e5776a1a";
+        let key2 = nostr_nsec_to_swarm_key(hex).unwrap();
+        assert_eq!(key, key2, "nsec and hex should produce same swarm key");
+
+        // generate should produce valid key
+        let gen = swarm_key_generate().unwrap();
+        assert!(gen.contains("/key/swarm/psk/1.0.0/"));
+        println!("generated swarm key:\n{}", gen);
     }
 }
