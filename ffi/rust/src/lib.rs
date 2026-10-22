@@ -61,6 +61,8 @@ extern "C" {
     fn kubo_git_tags(path: *const c_char) -> *mut c_char;
 
     // nostr (extended)
+    fn kubo_nostr_generate_key() -> *mut c_char;
+    fn kubo_nostr_get_public_key(sk: *const c_char) -> *mut c_char;
     fn kubo_nostr_event_sign_with_tags(
         sk: *const c_char,
         content: *const c_char,
@@ -476,6 +478,17 @@ pub fn swarm_key_generate() -> Result<String, String> {
 // ---------------------------------------------------------------------------
 // Nostr helpers (extended)
 // ---------------------------------------------------------------------------
+
+pub fn nostr_generate_key() -> Result<String, String> {
+    from_cstr(unsafe { kubo_nostr_generate_key() })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "keygen failed".into()))
+}
+
+pub fn nostr_get_public_key(sk: &str) -> Result<String, String> {
+    let c = cstr(sk)?;
+    from_cstr(unsafe { kubo_nostr_get_public_key(c.as_ptr()) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "pubkey failed".into()))
+}
 
 pub fn nostr_event_sign_with_tags(
     sk: &str,
