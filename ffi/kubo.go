@@ -11,6 +11,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -569,6 +571,53 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 					}
 
 					if cid != "" {
+						// Fetch-on-miss: if the crate file is not on disk, fetch it
+						// from IPFS and cache it for future requests.
+						filePath := filepath.Join(append([]string{regDir, "crates"}, indexParts...)...)
+						filePath = filepath.Join(filePath, crateName, version+".crate")
+						if _, err := os.Stat(filePath); os.IsNotExist(err) {
+							// Fetch from IPFS via the local node.
+							ipfsPath, _ := path.NewPath("/ipfs/" + cid)
+							node, err := h.api.Unixfs().Get(h.ctx, ipfsPath)
+							if err == nil {
+								if file, ok := node.(files.File); ok {
+									buf, err := io.ReadAll(file)
+									node.Close()
+									if err == nil && len(buf) > 0 {
+										// Verify against cksum if present.
+										var expectedCksum string
+										for _, line := range strings.Split(string(data), "\n") {
+											line = strings.TrimSpace(line)
+											if line == "" { continue }
+											var e map[string]interface{}
+											if err := json.Unmarshal([]byte(line), &e); err != nil { continue }
+											if v, ok := e["vers"].(string); ok && v == version {
+												if c, ok := e["cksum"].(string); ok {
+													expectedCksum = c
+												}
+												break
+											}
+										}
+										verified := true
+										if expectedCksum != "" {
+											h := sha256.Sum256(buf)
+											actual := hex.EncodeToString(h[:])
+											if actual != expectedCksum {
+												verified = false
+											}
+										}
+										if verified {
+											// Ensure parent dir exists.
+											os.MkdirAll(filepath.Dir(filePath), 0755)
+											os.WriteFile(filePath, buf, 0644)
+										}
+									}
+								} else {
+									node.Close()
+								}
+							}
+						}
+
 						http.Redirect(w, r, "/ipfs/"+cid, http.StatusFound)
 						return
 					}
