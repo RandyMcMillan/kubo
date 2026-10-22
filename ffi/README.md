@@ -49,16 +49,22 @@ Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
   (/ipfs, /ipns) and registered static dirs. Safe for public registry servers.
 - `kubo_node_add_static(handle, prefix, dir)` — register a static directory to
   be served. Must be called BEFORE `kubo_node_start_api`/`kubo_node_start_gateway`.
+- `kubo_node_add_crate_redirect(handle, registryDir)` — register a redirect
+  handler: `/crates/{prefix}/{crate}/{version}.crate` requests are 302-redirected
+  to `/ipfs/<cid>` when the index entry has an `ipfs_cid`. Falls back to
+  serving from disk. Must be called BEFORE `kubo_node_start_gateway`.
 - `kubo_unixfs_add_bytes(handle, data, length)` — add bytes; content is PINNED.
 - `kubo_unixfs_cat(handle, cid, out, out_len)` — fetch bytes (binary-safe).
+  Accepts full paths like `/ipfs/<cid>/config.json` for directory traversal.
 - `kubo_block_put` / `kubo_block_get` / `kubo_block_stat` — raw blocks.
-- `kubo_git_*` — git repository helpers (clone, open, head, init, branches,
-  remotes, create_branch, commit_lookup, tree_entries, blob_read, status,
-  diff_trees, fetch_all, blame, log, tags).
+- `kubo_git_*` — git repository helpers (clone, open, head, free, init,
+  is_bare, branches, remotes, create_branch, commit_lookup, tree_entries,
+  blob_read, status, diff_trees, fetch_all, blame, log, tags, push).
 - `kubo_nostr_*` — Nostr key/event/relay helpers (generate_key,
   get_public_key, event_sign, event_sign_with_tags, event_verify, nip19
   encode/decode, nip05 verify/query, relay connect/close/subscribe/drain/
-  unsubscribe/publish).
+  unsubscribe/publish, nsec_to_swarm_key).
+- `kubo_swarm_key_generate()` — generate a random IPFS swarm key.
 - `kubo_watch_path(repoPath, watchPath)` / `kubo_watch_stop(handle)` — directory watcher (ipfswatch).
 - `kubo_run_command(repoPath, argc, argv)` / `kubo_run_command_line(repoPath, line)` —
   generic runner that executes **any** Kubo command in-process (full coverage
@@ -131,6 +137,20 @@ make xcode-ffi         # build the Xcode/SwiftPM app
 # or: cd ffi/xcode && make build
 make app               # build a signed .app bundle (cd ffi/xcode && make app)
 ```
+
+## Cross-compilation
+
+The build script (`ffi/rust/build.rs`) maps the Rust `TARGET` triple to
+Go `GOOS`/`GOARCH` and sets `GOTOOLCHAIN` from the `go` directive in
+`go.mod`. Supported targets:
+
+- **macOS**: x86_64, aarch64 (native + same-family cross)
+- **Linux**: x86_64, aarch64
+- **Windows**: x86_64 (MSVC via MinGW)
+- **iOS**: device (aarch64), simulator (x86_64/aarch64), Mac Catalyst
+
+Apple cross-compilation uses `xcrun` to select the correct SDK and compiler.
+Unsupported host/target pairs bail out early with a clear error message.
 
 ## Memory management
 

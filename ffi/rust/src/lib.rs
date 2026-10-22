@@ -30,6 +30,7 @@ extern "C" {
     fn kubo_node_start_api(handle: u64, multiaddr: *const c_char) -> *mut c_char;
     fn kubo_node_start_gateway(handle: u64, multiaddr: *const c_char) -> *mut c_char;
     fn kubo_node_add_static(handle: u64, prefix: *const c_char, dir: *const c_char) -> i64;
+    fn kubo_node_set_auth_token(handle: u64, auth_token: *const c_char) -> i64;
     fn kubo_node_add_crate_redirect(handle: u64, registry_dir: *const c_char) -> i64;
 
     // content
@@ -263,6 +264,14 @@ impl Node {
     pub fn add_crate_redirect(&self, registry_dir: &str) -> bool {
         match cstr(registry_dir) {
             Ok(c) => unsafe { kubo_node_add_crate_redirect(self.0, c.as_ptr()) == 0 },
+            Err(_) => false,
+        }
+    }
+
+    /// Set a Bearer token for gateway authentication. Call before start_gateway.
+    pub fn set_auth_token(&self, token: &str) -> bool {
+        match cstr(token) {
+            Ok(c) => unsafe { kubo_node_set_auth_token(self.0, c.as_ptr()) == 0 },
             Err(_) => false,
         }
     }

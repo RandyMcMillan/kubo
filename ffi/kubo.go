@@ -295,6 +295,7 @@ type nodeHandle struct {
 	apiNetListener net.Listener
 	apiServer      *http.Server
 	staticDirs     map[string]string
+	authToken      string
 }
 
 var (
@@ -662,11 +663,31 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 			return
 		}
 		h.apiServer.Handler = handler
+		if h.authToken != "" {
+			h.apiServer.Handler = authMiddleware(handler, h.authToken)
+		}
 		h.apiServer.Serve(h.apiNetListener)
 	}()
 
 	setError(nil)
 	return C.CString(listener.Multiaddr().String())
+}
+
+// kubo_node_set_auth_token sets a Bearer token for gateway authentication.
+// Must be called before kubo_node_start_gateway.
+//
+//export kubo_node_set_auth_token
+func kubo_node_set_auth_token(handle uint64, authToken *C.char) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+	h.authToken = C.GoString(authToken)
+	setError(nil)
+	return 0
 }
 
 // kubo_node_add_crate_redirect registers a handler on the gateway that, for
@@ -690,6 +711,19 @@ func kubo_node_add_crate_redirect(handle uint64, registryDir *C.char) int64 {
 	h.staticDirs["__crate_redirect__"] = C.GoString(registryDir)
 	setError(nil)
 	return 0
+}
+
+// authMiddleware wraps an http.Handler with Bearer token authentication.
+func authMiddleware(next http.Handler, token string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer "+token {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 //export kubo_node_api_addrs
