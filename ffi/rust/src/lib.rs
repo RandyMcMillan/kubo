@@ -64,12 +64,16 @@ extern "C" {
     // nostr (extended)
     fn kubo_nostr_generate_key() -> *mut c_char;
     fn kubo_nostr_get_public_key(sk: *const c_char) -> *mut c_char;
+    fn kubo_nostr_event_sign(sk: *const c_char, content: *const c_char, kind: c_int) -> *mut c_char;
     fn kubo_nostr_event_sign_with_tags(
         sk: *const c_char,
         content: *const c_char,
         kind: c_int,
         tags_json: *const c_char,
     ) -> *mut c_char;
+    fn kubo_nostr_relay_connect(url: *const c_char) -> u64;
+    fn kubo_nostr_relay_close(handle: u64) -> i64;
+    fn kubo_nostr_relay_publish(handle: u64, event_json: *const c_char) -> i64;
     fn kubo_nostr_relay_subscribe(handle: u64, filter_json: *const c_char) -> u64;
     fn kubo_nostr_relay_drain(sub_handle: u64) -> *mut c_char;
     fn kubo_nostr_relay_unsubscribe(sub_handle: u64) -> i64;
@@ -510,6 +514,51 @@ pub fn nostr_event_sign_with_tags(
     let t = cstr(tags_json)?;
     from_cstr(unsafe { kubo_nostr_event_sign_with_tags(s.as_ptr(), c.as_ptr(), kind, t.as_ptr()) })
         .ok_or_else(|| last_error().unwrap_or_else(|| "sign failed".into()))
+}
+
+pub fn nostr_event_sign(sk: &str, content: &str, kind: i32) -> Result<String, String> {
+    let s = cstr(sk)?;
+    let c = cstr(content)?;
+    from_cstr(unsafe { kubo_nostr_event_sign(s.as_ptr(), c.as_ptr(), kind) })
+        .ok_or_else(|| last_error().unwrap_or_else(|| "sign failed".into()))
+}
+
+pub struct NostrRelay(u64);
+
+impl NostrRelay {
+    pub fn connect(url: &str) -> Result<Self, String> {
+        let c = cstr(url)?;
+        let h = unsafe { kubo_nostr_relay_connect(c.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "connect failed".into()))
+        } else {
+            Ok(NostrRelay(h))
+        }
+    }
+
+    pub fn publish(&self, event_json: &str) -> Result<(), String> {
+        let e = cstr(event_json)?;
+        let rc = unsafe { kubo_nostr_relay_publish(self.0, e.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "publish failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn subscribe(&self, filter_json: &str) -> Result<NostrRelaySub, String> {
+        NostrRelaySub::subscribe(self.0, filter_json)
+    }
+
+    pub fn close(&self) {
+        unsafe { kubo_nostr_relay_close(self.0); }
+    }
+}
+
+impl Drop for NostrRelay {
+    fn drop(&mut self) {
+        unsafe { kubo_nostr_relay_close(self.0); }
+    }
 }
 
 pub struct NostrRelaySub(u64);
