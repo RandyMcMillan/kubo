@@ -9,10 +9,10 @@ import "C"
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -589,9 +589,13 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 										var expectedCksum string
 										for _, line := range strings.Split(string(data), "\n") {
 											line = strings.TrimSpace(line)
-											if line == "" { continue }
+											if line == "" {
+												continue
+											}
 											var e map[string]interface{}
-											if err := json.Unmarshal([]byte(line), &e); err != nil { continue }
+											if err := json.Unmarshal([]byte(line), &e); err != nil {
+												continue
+											}
 											if v, ok := e["vers"].(string); ok && v == version {
 												if c, ok := e["cksum"].(string); ok {
 													expectedCksum = c
