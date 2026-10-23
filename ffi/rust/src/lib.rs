@@ -64,7 +64,8 @@ extern "C" {
     // nostr (extended)
     fn kubo_nostr_generate_key() -> *mut c_char;
     fn kubo_nostr_get_public_key(sk: *const c_char) -> *mut c_char;
-    fn kubo_nostr_event_sign(sk: *const c_char, content: *const c_char, kind: c_int) -> *mut c_char;
+    fn kubo_nostr_event_sign(sk: *const c_char, content: *const c_char, kind: c_int)
+        -> *mut c_char;
     fn kubo_nostr_event_sign_with_tags(
         sk: *const c_char,
         content: *const c_char,
@@ -551,13 +552,17 @@ impl NostrRelay {
     }
 
     pub fn close(&self) {
-        unsafe { kubo_nostr_relay_close(self.0); }
+        unsafe {
+            kubo_nostr_relay_close(self.0);
+        }
     }
 }
 
 impl Drop for NostrRelay {
     fn drop(&mut self) {
-        unsafe { kubo_nostr_relay_close(self.0); }
+        unsafe {
+            kubo_nostr_relay_close(self.0);
+        }
     }
 }
 
