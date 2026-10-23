@@ -50,6 +50,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: "go.mod"
+          cache: false
       - run: make build
       - uses: actions/upload-artifact@v7
         with:
