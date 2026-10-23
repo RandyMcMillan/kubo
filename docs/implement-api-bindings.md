@@ -4,6 +4,7 @@ This short document aims to give a quick guide to anyone implementing API
 bindings for IPFS implementations-- in particular kubo.
 
 Sections:
+
 - IPFS Types
 - API Transports
 - API Commands
@@ -39,6 +40,7 @@ function calls. For example:
 #### CLI API Transport
 
 In the commandline, IPFS uses a traditional flag and arg-based mapping, where:
+
 - the first arguments select the command, as in git - e.g. `ipfs dag get`
 - the flags specify options - e.g. `--enc=protobuf -q`
 - the rest are positional arguments - e.g. `ipfs key rename <name> <newName>`
@@ -50,13 +52,13 @@ calls. otherwise, they execute in the same process)
 #### HTTP API Transport
 
 In HTTP, our API layering uses a REST-like mapping, where:
+
 - the URL path selects the command - e.g `/object/get`
 - the URL query string implements option arguments - e.g. `&enc=protobuf&q=true`
 - the URL query also implements positional arguments - e.g.
   `&arg=<hash1>&arg=add-link&arg=foo&arg=<hash2>`
 - the request body streams file data - reads files or stdin
   - multiple streams are muxed with multipart (todo: add tar stream support)
-
 
 ## API Commands
 
@@ -68,6 +70,7 @@ commands by running `ipfs commands` locally.
 ## Implementing bindings for the HTTP API
 
 As mentioned above, the API commands map to HTTP with:
+
 - the URL path selects the command - e.g `/object/get`
 - the URL query string implements option arguments - e.g. `&enc=protobuf&q=true`
 - the URL query also implements positional arguments - e.g.
@@ -185,4 +188,3 @@ foo
 ```
 
 Which produces: http://gateway.ipfs.io/ipfs/QmNtpA5TBNqHrKf3cLQ1AiUKXiE4JmUodbG5gXrajg8wdv
-

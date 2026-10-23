@@ -5,26 +5,26 @@ on:
   pull_request:
     paths:
       # Migration implementation files
-      - 'repo/fsrepo/migrations/**'
-      - 'test/cli/migrations/**'
+      - "repo/fsrepo/migrations/**"
+      - "test/cli/migrations/**"
       # Config and repo handling
-      - 'repo/fsrepo/**'
+      - "repo/fsrepo/**"
       # Update command
-      - 'core/commands/update*.go'
-      - 'test/cli/update_test.go'
+      - "core/commands/update*.go"
+      - "test/cli/update_test.go"
       # This workflow file itself
-      - '.github/workflows/test-migrations.yml'
+      - ".github/workflows/test-migrations.yml"
   push:
     branches:
-      - 'master'
-      - 'release-*'
+      - "master"
+      - "release-*"
     paths:
-      - 'repo/fsrepo/migrations/**'
-      - 'test/cli/migrations/**'
-      - 'repo/fsrepo/**'
-      - 'core/commands/update*.go'
-      - 'test/cli/update_test.go'
-      - '.github/workflows/test-migrations.yml'
+      - "repo/fsrepo/migrations/**"
+      - "test/cli/migrations/**"
+      - "repo/fsrepo/**"
+      - "core/commands/update*.go"
+      - "test/cli/update_test.go"
+      - ".github/workflows/test-migrations.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
       - name: Build kubo binary
         run: |

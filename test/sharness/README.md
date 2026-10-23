@@ -91,7 +91,6 @@ and then also fails, making sure the test case fails. (wouldn't want
 the diagnostic accidentally returning true and making it _seem_ like
 the test case succeeded!).
 
-
 ### Testing commands on daemon or mounted
 
 Use the provided functions in `lib/test-lib.sh` to run the daemon or mount:

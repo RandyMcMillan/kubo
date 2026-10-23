@@ -111,7 +111,7 @@ Post `kubo` 1.X.X (future), `kubo` will use semver. This means that only major r
 
 We do not yet retroactively apply fixes to older releases (no Long Term Support releases for now), which means that we always recommend users to update to the latest, whenever possible.
 
-----------------------------
+---
 
 ## _Footnotes_
 

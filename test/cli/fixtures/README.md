@@ -40,7 +40,6 @@ ipfs dag export $FIXTURE_CID > TestGatewayHAMTDirectory.car
 
 TestGatewayMultiRange.car generated with:
 
-
 ```sh
 ipfs version
 # ipfs version 0.19.0
@@ -53,7 +52,7 @@ ipfs init --empty-repo
 ipfs daemon &> /dev/null &
 export IPFS_PID=$!
 
-# Get a specific byte range from the file. 
+# Get a specific byte range from the file.
 curl http://127.0.0.1:8080/ipfs/$FILE_CID -i -H "Range: bytes=1276-1279, 29839070-29839080"
 kill $IPFS_PID
 

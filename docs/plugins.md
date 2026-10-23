@@ -9,14 +9,14 @@ directory (by default `~/.ipfs/plugins`).
 **Table of Contents**
 
 - [Plugin Types](#plugin-types)
-    - [IPLD](#ipld)
-    - [Datastore](#datastore)
+  - [IPLD](#ipld)
+  - [Datastore](#datastore)
 - [Available Plugins](#available-plugins)
 - [Installing Plugins](#installing-plugins)
-    - [External Plugin](#external-plugin)
-        - [In-tree](#in-tree)
-        - [Out-of-tree](#out-of-tree)
-    - [Preloaded Plugins](#preloaded-plugins)
+  - [External Plugin](#external-plugin)
+    - [In-tree](#in-tree)
+    - [Out-of-tree](#out-of-tree)
+  - [Preloaded Plugins](#preloaded-plugins)
 - [Creating A Plugin](#creating-a-plugin)
 
 ## Plugin Types
@@ -57,7 +57,7 @@ For example, you can override an interface such as [exchange.Interface](https://
 or [pin.Pinner](https://github.com/ipfs/go-ipfs-pinner) with a custom implementation by appending an option like
 `fx.Decorate(func() exchange.Interface { return customExchange })`.
 
-Fx supports some advanced customization. Simple interface replacements like above are unlikely to break in the future, 
+Fx supports some advanced customization. Simple interface replacements like above are unlikely to break in the future,
 but the more invasive your changes, the more likely they are to break between releases. Kubo cannot guarantee backwards
 compatibility for `fx` customizations.
 
@@ -110,25 +110,25 @@ Example:
 
 ## Available Plugins
 
-| Name                                                                            | Type      | Preloaded | Description                                    |
-|---------------------------------------------------------------------------------|-----------|-----------|------------------------------------------------|
-| [git](https://github.com/ipfs/kubo/tree/master/plugin/plugins/git)           | IPLD      | x         | An IPLD format for git objects.                |
-| [badgerds](https://github.com/ipfs/kubo/tree/master/plugin/plugins/badgerds) | Datastore | x         | A high performance but experimental datastore. |
-| [flatfs](https://github.com/ipfs/kubo/tree/master/plugin/plugins/flatfs)     | Datastore | x         | A stable filesystem-based datastore.           |
-| [levelds](https://github.com/ipfs/kubo/tree/master/plugin/plugins/levelds)   | Datastore | x         | A stable, flexible datastore backend.          |
-| [jaeger](https://github.com/ipfs/go-jaeger-plugin)                              | Tracing   |           | An opentracing backend.                        |
+| Name                                                                           | Type      | Preloaded | Description                                                                             |
+| ------------------------------------------------------------------------------ | --------- | --------- | --------------------------------------------------------------------------------------- |
+| [git](https://github.com/ipfs/kubo/tree/master/plugin/plugins/git)             | IPLD      | x         | An IPLD format for git objects.                                                         |
+| [badgerds](https://github.com/ipfs/kubo/tree/master/plugin/plugins/badgerds)   | Datastore | x         | A high performance but experimental datastore.                                          |
+| [flatfs](https://github.com/ipfs/kubo/tree/master/plugin/plugins/flatfs)       | Datastore | x         | A stable filesystem-based datastore.                                                    |
+| [levelds](https://github.com/ipfs/kubo/tree/master/plugin/plugins/levelds)     | Datastore | x         | A stable, flexible datastore backend.                                                   |
+| [jaeger](https://github.com/ipfs/go-jaeger-plugin)                             | Tracing   |           | An opentracing backend.                                                                 |
 | [telemetry](https://github.com/ipfs/kubo/tree/master/plugin/plugins/telemetry) | Telemetry | x         | Reports anonymized usage data to an endpoint the operator configures. None is built in. |
 
-* **Preloaded** plugins are built into the Kubo binary and do not need to be
+- **Preloaded** plugins are built into the Kubo binary and do not need to be
   installed separately. At the moment, all in-tree plugins are preloaded.
 
 ## Installing Plugins
 
 Kubo supports two types of plugins: External and Preloaded.
 
-* External plugins must be installed in `$IPFS_PATH/plugins/` (usually
-`~/.ipfs/plugins/`).
-* Preloaded plugins are built-into the Kubo when it's compiled.
+- External plugins must be installed in `$IPFS_PATH/plugins/` (usually
+  `~/.ipfs/plugins/`).
+- Preloaded plugins are built-into the Kubo when it's compiled.
 
 ### External Plugin
 
@@ -184,6 +184,7 @@ To preload a Kubo plugin:
 
 1. Add the plugin to the preload list: `plugin/loader/preload_list`
 2. Build ipfs
+
 ```bash
 kubo$ make build
 ```

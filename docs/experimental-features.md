@@ -74,6 +74,7 @@ Experimental.
 > If you enable this, secure your RPC API using [`API.Authorizations`](https://github.com/ipfs/kubo/blob/master/docs/config.md#apiauthorizations) or custom auth middleware.
 
 Modify your ipfs config:
+
 ```
 ipfs config --json Experimental.FilestoreEnabled true
 ```
@@ -89,7 +90,7 @@ filestore instead of copying the files into your local IPFS repo.
 - [ ] Need to address error states and failure conditions
   - [ ] cleanup of broken filesystem references (if file is deleted)
   - [ ] tests that confirm ability to override preexisting filesystem links (allowing user to fix broken link)
-  - [ ] support for a single block having more than one sources in filesystem  (blocks can be shared by unrelated files, and not be broken when some files are unpinned / gc'd)
+  - [ ] support for a single block having more than one sources in filesystem (blocks can be shared by unrelated files, and not be broken when some files are unpinned / gc'd)
   - [ ] [other known issues](https://github.com/ipfs/kubo/issues/7161)
 - [ ] Need to write docs on usage, advantages, disadvantages
 - [ ] Need to merge utility commands to aid in maintenance and repair of filestore
@@ -117,6 +118,7 @@ v0.4.17
 > If you enable this, secure your RPC API using [`API.Authorizations`](https://github.com/ipfs/kubo/blob/master/docs/config.md#apiauthorizations) or custom auth middleware.
 
 Modify your ipfs config:
+
 ```
 ipfs config --json Experimental.UrlstoreEnabled true
 ```
@@ -124,11 +126,12 @@ ipfs config --json Experimental.UrlstoreEnabled true
 And then add a file at a specific URL using `ipfs urlstore add <url>`
 
 ### Road to being a real feature
+
 - [ ] Needs more people to use and report on how well it works.
 - [ ] Need to address error states and failure conditions
   - [ ] cleanup of broken URL+range references (if URL starts returning 404 or error)
   - [ ] tests that confirm ability to override preexisting URL+range links (allowing user to fix broken link)
-  - [ ] support for a single block having more than one URL+range  (blocks can be shared by unrelated URLs)
+  - [ ] support for a single block having more than one URL+range (blocks can be shared by unrelated URLs)
 - [ ] Need to write docs on usage, advantages, disadvantages
 - [ ] Need to implement caching
 - [ ] Need to add metrics to monitor performance
@@ -151,6 +154,7 @@ Stable but not quite ready for prime-time.
 ### How to enable
 
 Generate a pre-shared key using [ipfs-swarm-key-gen](https://github.com/Kubuxu/go-ipfs-swarm-key-gen):
+
 ```
 go install github.com/Kubuxu/go-ipfs-swarm-key-gen/ipfs-swarm-key-gen@latest
 ipfs-swarm-key-gen > ~/.ipfs/swarm.key
@@ -165,16 +169,19 @@ nodes (Since we aren't part of your private network) so you will need to set up
 your own bootstrap nodes.
 
 First, to prevent your node from even trying to connect to the default bootstrap nodes, run:
+
 ```bash
 ipfs bootstrap rm --all
 ```
 
 Then add your own bootstrap peers with:
+
 ```bash
 ipfs bootstrap add <multiaddr>
 ```
 
 For example:
+
 ```
 ipfs bootstrap add /ip4/104.236.76.40/tcp/4001/p2p/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64
 ```
@@ -195,7 +202,7 @@ configured, the daemon will fail to start.
   - [ ] Does not work with QUIC: [go-libp2p#1432](https://github.com/libp2p/go-libp2p/issues/1432)
 - [ ] Needs better tooling/UX
   - [ ] Detect lack of peers when swarm key is present and prompt user to set up bootstrappers/peering
-  - [ ] ipfs-webui will not load  unless blocks are present in private swarm. Detect it and prompt user to import CAR with webui.
+  - [ ] ipfs-webui will not load unless blocks are present in private swarm. Detect it and prompt user to import CAR with webui.
 
 ## ipfs p2p
 
@@ -275,12 +282,12 @@ First, pick a protocol name for your application. Think of the protocol name as
 a port number, just significantly more user-friendly. In this example, we're
 going to use `/http`.
 
-***Setup:***
+_**Setup:**_
 
 1. A "server" node with peer ID `$SERVER_ID`
 2. A "client" node.
 
-***On the "server" node:***
+_**On the "server" node:**_
 
 First, start your application and have it listen for TCP connections on
 port `$APP_PORT`.
@@ -294,18 +301,20 @@ Then, configure the p2p listener by running:
 This will configure IPFS to forward all incoming `/http` streams to
 `127.0.0.1:$APP_PORT` (opening a new connection to `127.0.0.1:$APP_PORT` per incoming stream.
 
-***On the "client" node:***
+_**On the "client" node:**_
 
 Next, have your application make a http request to `127.0.0.1:8080/p2p/$SERVER_ID/http/$FORWARDED_PATH`. This
 connection will be forwarded to the service running on `127.0.0.1:$APP_PORT` on
 the remote machine (which needs to be a http server!) with path `$FORWARDED_PATH`. You can test it with netcat:
 
-***On "server" node:***
+_**On "server" node:**_
+
 ```sh
 > echo -e "HTTP/1.1 200\nContent-length: 11\n\nIPFS rocks!" | nc -l -p $APP_PORT
 ```
 
-***On "client" node:***
+_**On "client" node:**_
+
 ```sh
 > curl http://localhost:8080/p2p/$SERVER_ID/http/
 ```
@@ -335,9 +344,11 @@ See [fuse.md](./fuse.md) for setup instructions and details.
 ## Plugins
 
 ### In Version
+
 0.4.11
 
 ### State
+
 Experimental
 
 Plugins allow adding functionality without the need to recompile the daemon.
@@ -380,20 +391,24 @@ Specification: [IPNS PubSub Router](https://specs.ipfs.tech/ipns/ipns-pubsub-rou
 ### In Version
 
 0.4.14 :
-  - Introduced
+
+- Introduced
 
 0.5.0 :
-   - No longer needs to use the DHT for the first resolution
-   - When discovering PubSub peers via the DHT, the DHT key is different from previous versions
-      - This leads to 0.5 IPNS pubsub peers and 0.4 IPNS pubsub peers not being able to find each other in the DHT
-   - Robustness improvements
+
+- No longer needs to use the DHT for the first resolution
+- When discovering PubSub peers via the DHT, the DHT key is different from previous versions
+  - This leads to 0.5 IPNS pubsub peers and 0.4 IPNS pubsub peers not being able to find each other in the DHT
+- Robustness improvements
 
 0.11.0 :
-  - Can be enabled via `Ipns.UsePubsub` flag in config
+
+- Can be enabled via `Ipns.UsePubsub` flag in config
 
 0.40.0 :
-  - Persistent message sequence number validation to prevent message cycles
-    in large networks
+
+- Persistent message sequence number validation to prevent message cycles
+  in large networks
 
 ### State
 
@@ -415,11 +430,13 @@ Both the publisher and the resolver nodes need to have the feature enabled for i
 
 Run your daemon with the `--enable-namesys-pubsub` flag
 or modify your ipfs config and restart the daemon:
+
 ```
 ipfs config --json Ipns.UsePubsub true
 ```
 
 NOTE:
+
 - This feature implicitly enables pubsub.
 - Passing `--enable-namesys-pubsub` CLI flag overrides `Ipns.UsePubsub` config.
 
@@ -455,7 +472,6 @@ ipfs config --json Swarm.RelayClient.Enabled true
 
 - [ ] needs testing
 - [ ] needs to be automatically enabled when AutoNAT detects node is behind an impenetrable NAT.
-
 
 ## Strategic Providing
 
@@ -577,6 +593,7 @@ Experimental, disabled by default.
 Enables serving a subset of the [IPFS HTTP Gateway](https://specs.ipfs.tech/http-gateways/) semantics over libp2p `/http/1.1` protocol.
 
 Notes:
+
 - This feature only about serving verifiable gateway requests over libp2p:
   - Deserialized responses are not supported.
   - Only operate on `/ipfs` resources (no `/ipns` atm)
@@ -612,4 +629,3 @@ ipfs config --json Experimental.GatewayOverLibp2p true
 ## Accelerated DHT Client
 
 This feature now lives at [`Routing.AcceleratedDHTClient`](https://github.com/ipfs/kubo/blob/master/docs/config.md#routingaccelerateddhtclient).
-

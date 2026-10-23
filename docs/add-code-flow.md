@@ -62,11 +62,11 @@ Big files are split into chunks because:
 
 **Chunking strategies** (set with `--chunker`):
 
-| Strategy | Description | Best For |
-|----------|-------------|----------|
-| `size-N` | Fixed size chunks | General use |
-| `rabin` | Content-defined chunks using rolling hash | Deduplication across similar files |
-| `buzhash` | Alternative content-defined chunking | Similar to rabin |
+| Strategy  | Description                               | Best For                           |
+| --------- | ----------------------------------------- | ---------------------------------- |
+| `size-N`  | Fixed size chunks                         | General use                        |
+| `rabin`   | Content-defined chunks using rolling hash | Deduplication across similar files |
+| `buzhash` | Alternative content-defined chunking      | Similar to rabin                   |
 
 See `ipfs add --help` for current defaults, or [Import](config.md#import) for making them permanent.
 
@@ -175,15 +175,15 @@ flowchart TD
 
 ### Key Files
 
-| Component | Location |
-|-----------|----------|
-| CLI command | `core/commands/add.go` |
-| API implementation | `core/coreapi/unixfs.go` |
-| Adder logic | `core/coreunix/add.go` |
-| Chunking | [boxo/chunker](https://github.com/ipfs/boxo/tree/main/chunker) |
-| DAG layouts | [boxo/ipld/unixfs/importer](https://github.com/ipfs/boxo/tree/main/ipld/unixfs/importer) |
-| MFS | [boxo/mfs](https://github.com/ipfs/boxo/tree/main/mfs) |
-| Pinning | [boxo/pinning/pinner](https://github.com/ipfs/boxo/tree/main/pinning/pinner) |
+| Component          | Location                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| CLI command        | `core/commands/add.go`                                                                   |
+| API implementation | `core/coreapi/unixfs.go`                                                                 |
+| Adder logic        | `core/coreunix/add.go`                                                                   |
+| Chunking           | [boxo/chunker](https://github.com/ipfs/boxo/tree/main/chunker)                           |
+| DAG layouts        | [boxo/ipld/unixfs/importer](https://github.com/ipfs/boxo/tree/main/ipld/unixfs/importer) |
+| MFS                | [boxo/mfs](https://github.com/ipfs/boxo/tree/main/mfs)                                   |
+| Pinning            | [boxo/pinning/pinner](https://github.com/ipfs/boxo/tree/main/pinning/pinner)             |
 
 ### The Adder
 

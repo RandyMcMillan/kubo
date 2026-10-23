@@ -7,7 +7,7 @@ on:
       - master
   pull_request:
     paths-ignore:
-      - '**/*.md'
+      - "**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
@@ -53,7 +53,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'kubo-gateway/go.mod'
+          go-version-file: "kubo-gateway/go.mod"
           cache: true
           cache-dependency-path: kubo-gateway/go.sum
       - name: Build kubo-gateway
@@ -139,7 +139,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'kubo-gateway/go.mod'
+          go-version-file: "kubo-gateway/go.mod"
           cache: true
           cache-dependency-path: kubo-gateway/go.sum
       - name: Build kubo-gateway

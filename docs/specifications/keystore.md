@@ -1,6 +1,7 @@
 # ![](https://img.shields.io/badge/status-wip-orange.svg?style=flat-square) Keystore
 
 **Authors(s):**
+
 - [whyrusleeping](github.com/whyrusleeping)
 - [Hector Sanjuan](github.com/hsanjuan)
 
@@ -41,16 +42,16 @@ USAGE
 
   'ipfs key gen' generates a new keypair for usage with IPNS and 'ipfs name
   publish'.
-  
+
     > ipfs key gen --type=rsa --size=2048 mykey
     > ipfs name publish --key=mykey QmSomeHash
-  
+
   'ipfs key list' lists the available keys.
-  
+
     > ipfs key list
     self
     mykey
-  		
+
 
 SUBCOMMANDS
   ipfs key export <name>           - Export a keypair
@@ -89,7 +90,6 @@ DESCRIPTION:
 
 ##### ipfs key Gen
 
-
 ```
 USAGE
   ipfs key gen <name> - Create a new keypair
@@ -112,7 +112,7 @@ OPTIONS
                         {b58mh|base36|k|base32|b...}. Default: base36.
 ```
 
-* * *
+---
 
 ##### Key Send
 
@@ -127,16 +127,16 @@ DESCRIPTION
 
   'ipfs key gen' generates a new keypair for usage with IPNS and 'ipfs name
   publish'.
-  
+
     > ipfs key gen --type=rsa --size=2048 mykey
     > ipfs name publish --key=mykey QmSomeHash
-  
+
   'ipfs key list' lists the available keys.
-  
+
     > ipfs key list
     self
     mykey
-  		
+
 
 SUBCOMMANDS
   ipfs key export <name>           - Export a keypair
@@ -155,7 +155,7 @@ SUBCOMMANDS
 
 Ensure that the user knows the implications of sending a key.
 
-* * *
+---
 
 ##### Crypt Encrypt
 
@@ -183,25 +183,25 @@ DESCRIPTION:
 
 This should probably just operate on raw data and not on DAGs.
 
-* * *
+---
 
 ##### Other Interface Changes
 
 We will also need to make additions to support keys in other commands, these changes are as follows:
 
 - `ipfs add`
-    - Support for a `-encrypt-key` option, for block encrypting the file being added with the key
-        - also adds an 'encrypted' node above the root unixfs node
-    - Support for a `-sign-key` option to attach a signature node above the root unixfs node
+  - Support for a `-encrypt-key` option, for block encrypting the file being added with the key
+    - also adds an 'encrypted' node above the root unixfs node
+  - Support for a `-sign-key` option to attach a signature node above the root unixfs node
 
 - `ipfs block put`
-    - Support for a `-encrypt-key` option, for encrypting the block before hashing and storing
+  - Support for a `-encrypt-key` option, for encrypting the block before hashing and storing
 
 - `ipfs object put`
-    - Support for a `-encrypt-key` option, for encrypting the object before hashing and storing
+  - Support for a `-encrypt-key` option, for encrypting the object before hashing and storing
 
 - `ipfs name publish`
-    - Support for a `-key` option to select which keyspace to publish to
+  - Support for a `-key` option to select which keyspace to publish to
 
 ### Code changes and additions
 
@@ -238,13 +238,13 @@ does not linger in memory.
 - if new node types are not unixfs nodes, special consideration must be given to the interop
 
 - DagReader needs to be able to access keystore to seamlessly stream encrypted data we have keys for
-    - also needs to be able to verify signatures
+  - also needs to be able to verify signatures
 
 #### Importer
 
 - DagBuilderHelper needs to be able to encrypt blocks
-    - Dag Nodes should be generated like normal, then encrypted, and their parents should
-        link to the hash of the encrypted node
+  - Dag Nodes should be generated like normal, then encrypted, and their parents should
+    link to the hash of the encrypted node
 - DagBuilderParams should have extra parameters to accommodate creating a DBH that encrypts the blocks
 
 #### New 'Encrypt' package
@@ -258,9 +258,11 @@ public key chosen and stored in the Encrypted DAG structure.
 Note: One option is to simply add it to the key interface.
 
 ### Structures
+
 Some tentative mockups (in json) of the new DAG structures for signing and encrypting
 
 Signed DAG:
+
 ```
 {
     "Links" : [
@@ -278,6 +280,7 @@ Signed DAG:
 ```
 
 Encrypted DAG:
+
 ```
 {
     "Links" : [

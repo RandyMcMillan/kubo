@@ -4,14 +4,14 @@ This file provides instructions for AI coding agents working on the [Kubo](https
 
 ## Quick Reference
 
-| Task              | Command                                                  |
-|-------------------|----------------------------------------------------------|
-| Tidy deps         | `make mod_tidy` (all modules; required if deps changed)  |
-| Build             | `make build`                                             |
-| Unit tests        | `go test ./... -run TestName -v`                         |
-| Integration tests | `make build && go test ./test/cli/... -run TestName -v`  |
-| Lint              | `make -O test_go_lint`                                   |
-| Format            | `go fmt ./...`                                           |
+| Task              | Command                                                 |
+| ----------------- | ------------------------------------------------------- |
+| Tidy deps         | `make mod_tidy` (all modules; required if deps changed) |
+| Build             | `make build`                                            |
+| Unit tests        | `go test ./... -run TestName -v`                        |
+| Integration tests | `make build && go test ./test/cli/... -run TestName -v` |
+| Lint              | `make -O test_go_lint`                                  |
+| Format            | `go fmt ./...`                                          |
 
 ## Project Overview
 
@@ -19,18 +19,18 @@ Kubo is the reference implementation of IPFS in Go. Most IPFS protocol logic liv
 
 Key directories:
 
-| Directory          | Purpose                                                  |
-|--------------------|----------------------------------------------------------|
-| `cmd/ipfs/`        | CLI entry point and binary                               |
-| `core/`            | core IPFS node implementation                            |
-| `core/commands/`   | CLI command definitions                                  |
-| `core/coreapi/`    | Go API implementation                                    |
-| `client/rpc/`      | HTTP RPC client                                          |
-| `plugin/`          | plugin system                                            |
-| `repo/`            | repository management                                    |
-| `test/cli/`        | Go-based CLI integration tests (preferred for new tests) |
-| `test/sharness/`   | legacy shell-based integration tests                     |
-| `docs/`            | documentation                                            |
+| Directory        | Purpose                                                  |
+| ---------------- | -------------------------------------------------------- |
+| `cmd/ipfs/`      | CLI entry point and binary                               |
+| `core/`          | core IPFS node implementation                            |
+| `core/commands/` | CLI command definitions                                  |
+| `core/coreapi/`  | Go API implementation                                    |
+| `client/rpc/`    | HTTP RPC client                                          |
+| `plugin/`        | plugin system                                            |
+| `repo/`          | repository management                                    |
+| `test/cli/`      | Go-based CLI integration tests (preferred for new tests) |
+| `test/sharness/` | legacy shell-based integration tests                     |
+| `docs/`          | documentation                                            |
 
 Other key external dependencies: [go-libp2p](https://github.com/libp2p/go-libp2p) (networking), [go-libp2p-kad-dht](https://github.com/libp2p/go-libp2p-kad-dht) (DHT).
 
@@ -112,16 +112,16 @@ If you modify any `.go` files outside of `test/`, you must run `make build` befo
 
 The full test suite is composed of several targets:
 
-| Make target          | What it runs                                                          |
-|----------------------|-----------------------------------------------------------------------|
-| `make test`          | all tests (`test_go_fmt` + `test_unit` + `test_cli` + `test_sharness`) |
-| `make test_short`    | fast subset (`test_go_fmt` + `test_unit`)                             |
-| `make test_unit`     | unit tests with coverage (excludes `test/cli`)                        |
-| `make test_cli`      | CLI integration tests (requires `make build` first)                   |
-| `make test_fuse`     | FUSE filesystem tests (requires `/dev/fuse` and `fusermount` in PATH) |
-| `make test_sharness` | legacy shell-based integration tests                                  |
-| `make test_go_fmt`   | checks Go source formatting                                          |
-| `make -O test_go_lint` | runs `golangci-lint`                                                |
+| Make target            | What it runs                                                           |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `make test`            | all tests (`test_go_fmt` + `test_unit` + `test_cli` + `test_sharness`) |
+| `make test_short`      | fast subset (`test_go_fmt` + `test_unit`)                              |
+| `make test_unit`       | unit tests with coverage (excludes `test/cli`)                         |
+| `make test_cli`        | CLI integration tests (requires `make build` first)                    |
+| `make test_fuse`       | FUSE filesystem tests (requires `/dev/fuse` and `fusermount` in PATH)  |
+| `make test_sharness`   | legacy shell-based integration tests                                   |
+| `make test_go_fmt`     | checks Go source formatting                                            |
+| `make -O test_go_lint` | runs `golangci-lint`                                                   |
 
 During development, prefer running a specific test rather than the full suite:
 

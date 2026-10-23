@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to run mod_tidy on'
+        description: "PR number to run mod_tidy on"
         required: true
         type: number
 

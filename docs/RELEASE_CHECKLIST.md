@@ -32,6 +32,7 @@
 ## 2. Tag & Publish
 
 ### Create Tag
+
 ⚠️ **POINT OF NO RETURN:** once pushed, tags trigger automatic Docker/NPM publishing that cannot be undone!
 If you're making a release for the first time, do pair programming and have the release reviewer verify all commands.
 

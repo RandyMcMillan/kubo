@@ -6,12 +6,14 @@ with a SwiftUI GUI, node lifecycle, peer networking, and an embedded WebUI.
 ## Open in Xcode (recommended for signing)
 
 ### Option A: SwiftPM package (ffi/xcode/Package.swift)
+
 1. Open Xcode → **File → Open…** → select `ffi/xcode/Package.swift`.
 2. Xcode resolves the local `../swift` package automatically.
 3. Select the `XcodeApp` target, set your **Signing & Capabilities** team,
    and build/run (⌘R).
 
 ### Option B: Your own Xcode project (kubo-ffi-example.xcodeproj)
+
 1. Open `ffi/xcode/kubo-ffi-example.xcodeproj` in Xcode.
 2. **File → Add Package Dependencies…** → **Add Local…** → select
    `ffi/swift` (the `KuboFFI` package).
@@ -53,5 +55,5 @@ the app sandbox. Adjust in Xcode's Signing & Capabilities tab as needed.
   layout intact.
 - The WebContent process (WKWebView) may show sandbox warnings on macOS 26
   with ad-hoc signing; open the logged WebUI URL in a browser if needed.
-EOF
-echo done
+  EOF
+  echo done

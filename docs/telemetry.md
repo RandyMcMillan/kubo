@@ -94,19 +94,19 @@ Every option in [Disabling telemetry](#disabling-telemetry) still applies to suc
 
 The mode comes from [`IPFS_TELEMETRY`](environment-variables.md#ipfs_telemetry) first, then [`DO_NOT_TRACK`](environment-variables.md#do_not_track), then `Plugins.Plugins.telemetry.Config.Mode`.
 
-| Mode   | Description                                                                                             |
-|--------|---------------------------------------------------------------------------------------------------------|
+| Mode   | Description                                                                                                                              |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `auto` | Default when the mode is unset. Telemetry is enabled if an endpoint is configured, and a node shows the startup notice on its first run. |
-| `on`   | Telemetry is enabled.                                                                                    |
-| `off`  | Telemetry is disabled. Nothing is sent, and the stored identifier is removed.                            |
+| `on`   | Telemetry is enabled.                                                                                                                    |
+| `off`  | Telemetry is disabled. Nothing is sent, and the stored identifier is removed.                                                            |
 
 ### Configuration
 
-| Key        | Type   | Default                            | Description                                                                              |
-|------------|--------|------------------------------------|--------------------------------------------------------------------------------------------|
-| `Mode`     | string | `auto`                             | `auto`, `on` or `off`. See [Modes](#modes).                                              |
-| `Endpoint` | string | none                               | URL the node sends telemetry to. Without it, nothing is collected or sent.               |
-| `Delay`    | string | `15m`                              | How long to wait after daemon start before the first send. Accepts a Go duration string. |
+| Key        | Type   | Default | Description                                                                              |
+| ---------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
+| `Mode`     | string | `auto`  | `auto`, `on` or `off`. See [Modes](#modes).                                              |
+| `Endpoint` | string | none    | URL the node sends telemetry to. Without it, nothing is collected or sent.               |
+| `Delay`    | string | `15m`   | How long to wait after daemon start before the first send. Accepts a Go duration string. |
 
 ## Endpoint API
 

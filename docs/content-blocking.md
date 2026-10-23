@@ -28,11 +28,11 @@ Content blocking is an opt-in decision made by the operator of `ipfs daemon`.
 Place a `*.deny` file in one of directories:
 
 - `$IPFS_PATH/denylists/` (`$HOME/.ipfs/denylists/` if `IPFS_PATH` is not set)
-- `$XDG_CONFIG_HOME/ipfs/denylists/` (`$HOME/.config/ipfs/denylists/` if `XDG_CONFIG_HOME` is not  set)
+- `$XDG_CONFIG_HOME/ipfs/denylists/` (`$HOME/.config/ipfs/denylists/` if `XDG_CONFIG_HOME` is not set)
 - `/etc/ipfs/denylists/` (global)
 
-Files need to be present before starting the `ipfs daemon` in order to be watched for any new updates 
-appended  once started.  Any other changes (such as removal of entries, prepending of entries, or 
+Files need to be present before starting the `ipfs daemon` in order to be watched for any new updates
+appended once started. Any other changes (such as removal of entries, prepending of entries, or
 insertion of new entries before the EOF at time of daemon starting) will not be detected or processed
 after boot; a restart of the daemon will be required for them to be factored in.
 
@@ -95,7 +95,6 @@ See [IPIP-383](https://specs.ipfs.tech/ipips/ipip-0383/) for detailed format spe
 
 Set `IPFS_CONTENT_BLOCKING_DISABLE` environment variable to `true` and restart the daemon.
 
-
 ## How to debug
 
 Debug logging of `nopfs` subsystem can be enabled with `GOLOG_LOG_LEVEL="nopfs=debug"`
@@ -107,5 +106,3 @@ To only log requests for blocked content set `GOLOG_LOG_LEVEL="nopfs-blocks=warn
 ```
 WARN (...) QmRFniDxwxoG2n4AcnGhRdjqDjCM5YeUcBE75K8WXmioH3: blocked (test.deny:9)
 ```
-
-

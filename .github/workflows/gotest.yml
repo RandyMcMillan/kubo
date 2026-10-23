@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
   pull_request:
     paths-ignore:
-      - '**/*.md'
+      - "**/*.md"
   push:
     branches:
-      - 'master'
+      - "master"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      GOTRACEBACK: single  # reduce noise on test timeout panics
+      GOTRACEBACK: single # reduce noise on test timeout panics
       TEST_DOCKER: 0
       TEST_FUSE: 0
       TEST_VERBOSE: 1
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Install missing tools
         run: sudo apt update && sudo apt install -y zsh
       - name: Run unit tests
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      GOTRACEBACK: single  # reduce noise on test timeout panics
+      GOTRACEBACK: single # reduce noise on test timeout panics
       TEST_VERBOSE: 1
       GIT_PAGER: cat
       IPFS_CHECK_RCMGR_DEFAULTS: 1
@@ -106,7 +106,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Install missing tools
         run: sudo apt update && sudo apt install -y zsh
       - name: Run CLI tests
@@ -175,7 +175,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Install FUSE
         run: |
           if ! command -v fusermount3 &>/dev/null && ! command -v fusermount &>/dev/null; then
@@ -217,6 +217,6 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Run example tests
         run: make test_examples

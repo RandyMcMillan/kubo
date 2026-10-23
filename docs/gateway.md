@@ -112,7 +112,7 @@ $ ipfs config --json Gateway.NoFetch true
   resources on serving instead of announcing, turn announcements off with
   [`Provide.Enabled=false`](config.md#provideenabled). That drops the ongoing
   announcing work.
-- `NoFetch` does not stop your node from helping other peers find *their*
+- `NoFetch` does not stop your node from helping other peers find _their_
   content. If you want it to act only as a client and not help route for others,
   set [`Routing.Type=autoclient`](config.md#routingtype).
 - To limit this to a single DNSLink website, see the
@@ -176,17 +176,17 @@ $ ipfs config --json Gateway.PublicGateways '{
 
 - **Backward-compatible:** content paths redirect to subdomains:
 
-   `http://subdomain-gw.example.com/ipfs/{cid}` → `http://{cid}.ipfs.subdomain-gw.example.com`
+  `http://subdomain-gw.example.com/ipfs/{cid}` → `http://{cid}.ipfs.subdomain-gw.example.com`
 
 - **X-Forwarded-Proto:** if you run Kubo behind a reverse proxy that provides TLS, make it add an `X-Forwarded-Proto: https` header so users are redirected to `https://`, not `http://`. It also inlines DNSLink names into a single DNS label, so they work with a wildcard TLS cert ([details](https://github.com/ipfs/in-web-browsers/issues/169)). The NGINX directive is `proxy_set_header X-Forwarded-Proto "https";`:
 
-   `http://subdomain-gw.example.com/ipfs/{cid}` → `https://{cid}.ipfs.subdomain-gw.example.com`
+  `http://subdomain-gw.example.com/ipfs/{cid}` → `https://{cid}.ipfs.subdomain-gw.example.com`
 
-   `http://subdomain-gw.example.com/ipns/your-dnslink.example.org` → `https://your--dnslink-example-org.ipns.subdomain-gw.example.com`
+  `http://subdomain-gw.example.com/ipns/your-dnslink.example.org` → `https://your--dnslink-example-org.ipns.subdomain-gw.example.com`
 
 - **X-Forwarded-Host:** override the gateway host from the request with `X-Forwarded-Host: example.net`:
 
-   `http://subdomain-gw.example.com/ipfs/{cid}` → `http://{cid}.ipfs.example.net`
+  `http://subdomain-gw.example.com/ipfs/{cid}` → `http://{cid}.ipfs.example.net`
 
 #### Path gateway
 
@@ -239,7 +239,9 @@ The `Gateway.*` configuration options are described in the
 above for common setups.
 
 ### Debug
+
 The gateway's log level can be changed with this command:
+
 ```
 > ipfs log level core/server debug
 ```
@@ -249,6 +251,7 @@ The gateway's log level can be changed with this command:
 When deploying Kubo's gateway in production, be aware of these important considerations:
 
 <a id="reverse-proxy"></a>
+
 > [!IMPORTANT]
 > **Reverse Proxy:** When running Kubo behind a reverse proxy (such as nginx),
 > the original `Host` header **must** be forwarded to Kubo for
@@ -344,7 +347,7 @@ Gateway](https://dnslink.dev/#example-ipfs-gateway) for instructions.
 ## Filenames
 
 When downloading files, browsers will usually guess a file's filename by looking
-at the last component of the path. Unfortunately, when linking *directly* to a
+at the last component of the path. Unfortunately, when linking _directly_ to a
 file (with no containing directory), the final component is just a CID
 (`bafy..` or `Qm...`). This isn't exactly user-friendly.
 

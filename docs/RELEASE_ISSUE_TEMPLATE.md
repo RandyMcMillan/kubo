@@ -17,13 +17,13 @@
 
 # Meta
 
-* Release owner: @who
-* Release reviewer: @who
-* Expected RC date: week of YYYY-MM-DD
-* 🚢 Expected final release date: YYYY-MM-DD
-* Release PR: <add link once release PR is created>
-* Accompanying PR for improving the release process: ([example](https://github.com/ipfs/kubo/pull/9391))
-* Changelog: https://github.com/ipfs/kubo/blob/master/docs/changelogs/vX.Y.md
+- Release owner: @who
+- Release reviewer: @who
+- Expected RC date: week of YYYY-MM-DD
+- 🚢 Expected final release date: YYYY-MM-DD
+- Release PR: <add link once release PR is created>
+- Accompanying PR for improving the release process: ([example](https://github.com/ipfs/kubo/pull/9391))
+- Changelog: https://github.com/ipfs/kubo/blob/master/docs/changelogs/vX.Y.md
 
 # Items In Scope
 

@@ -23,18 +23,14 @@
           "/routing/v1/peers",
           "/routing/v1/ipns"
         ],
-        "Write": [
-          "/routing/v1/ipns"
-        ]
+        "Write": ["/routing/v1/ipns"]
       }
     },
     "IPNI": {
       "URL": "https://ipni.example.com",
       "Description": "Network Indexer - content routing database for large storage providers",
       "DelegatedConfig": {
-        "Read": [
-          "/routing/v1/providers"
-        ],
+        "Read": ["/routing/v1/providers"],
         "Write": []
       }
     }
@@ -44,23 +40,17 @@
       "https://dns.eth.limo/dns-query",
       "https://dns.eth.link/dns-query"
     ],
-    "test.": [
-      "https://test.resolver/dns-query"
-    ]
+    "test.": ["https://test.resolver/dns-query"]
   },
   "DelegatedEndpoints": {
     "https://ipni.example.com": {
       "Systems": ["IPNI"],
-      "Read": [
-        "/routing/v1/providers"
-      ],
+      "Read": ["/routing/v1/providers"],
       "Write": []
     },
     "https://routing.example.com": {
       "Systems": ["IPNI"],
-      "Read": [
-        "/routing/v1/providers"
-      ],
+      "Read": ["/routing/v1/providers"],
       "Write": []
     },
     "https://delegated-ipfs.dev": {
@@ -70,18 +60,12 @@
         "/routing/v1/peers",
         "/routing/v1/ipns"
       ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Write": ["/routing/v1/ipns"]
     },
     "https://ipns.example.com": {
       "Systems": ["AminoDHT"],
-      "Read": [
-        "/routing/v1/ipns"
-      ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Read": ["/routing/v1/ipns"],
+      "Write": ["/routing/v1/ipns"]
     }
   }
 }

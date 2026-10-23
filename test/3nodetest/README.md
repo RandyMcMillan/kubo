@@ -2,14 +2,14 @@ this is an ipfs integration test
 
 **requirements**
 
-* Docker
-* fig
-* Go
+- Docker
+- fig
+- Go
 
-* ipfs image named "zaqwsx_ipfs-test-img"
+- ipfs image named "zaqwsx_ipfs-test-img"
 
 ```
 make setup
-fig build 
+fig build
 fig up
 ```

@@ -138,55 +138,55 @@ Kubo is available in community-maintained packages across many operating systems
 
 #### Linux
 
-| Distribution | Install | Version |
-|--------------|---------|---------|
-| Ubuntu | [PPA](https://launchpad.net/~twdragon/+archive/ubuntu/ipfs): `sudo apt install ipfs-kubo` | [![PPA: twdragon](https://img.shields.io/badge/PPA-twdragon-E95420?logo=ubuntu)](https://launchpad.net/~twdragon/+archive/ubuntu/ipfs) |
-| Arch | `pacman -S kubo` | [![Arch package](https://repology.org/badge/version-for-repo/arch/kubo.svg)](https://archlinux.org/packages/extra/x86_64/kubo/) |
-| Fedora | [COPR](https://copr.fedorainfracloud.org/coprs/taw/ipfs/): `dnf install kubo` | [![COPR: taw](https://img.shields.io/badge/COPR-taw-51A2DA?logo=fedora)](https://copr.fedorainfracloud.org/coprs/taw/ipfs/) |
-| Nix | `nix-env -i kubo` | [![nixpkgs unstable](https://repology.org/badge/version-for-repo/nix_unstable/kubo.svg)](https://search.nixos.org/packages?query=kubo) |
-| Gentoo | `emerge -a net-p2p/kubo` | [![Gentoo package](https://repology.org/badge/version-for-repo/gentoo/kubo.svg)](https://packages.gentoo.org/packages/net-p2p/kubo) |
-| openSUSE | `zypper install kubo` | [![openSUSE Tumbleweed](https://repology.org/badge/version-for-repo/opensuse_tumbleweed/kubo.svg)](https://software.opensuse.org/package/kubo) |
-| Solus | `sudo eopkg install kubo` | [![Solus package](https://repology.org/badge/version-for-repo/solus/kubo.svg)](https://packages.getsol.us/shannon/k/kubo/) |
-| Guix | `guix install kubo` | [![Guix package](https://repology.org/badge/version-for-repo/gnuguix/kubo.svg)](https://packages.guix.gnu.org/packages/kubo/) |
-| _other_ | [See Repology for the full list](https://repology.org/project/kubo/versions) | |
+| Distribution | Install                                                                                   | Version                                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ubuntu       | [PPA](https://launchpad.net/~twdragon/+archive/ubuntu/ipfs): `sudo apt install ipfs-kubo` | [![PPA: twdragon](https://img.shields.io/badge/PPA-twdragon-E95420?logo=ubuntu)](https://launchpad.net/~twdragon/+archive/ubuntu/ipfs)         |
+| Arch         | `pacman -S kubo`                                                                          | [![Arch package](https://repology.org/badge/version-for-repo/arch/kubo.svg)](https://archlinux.org/packages/extra/x86_64/kubo/)                |
+| Fedora       | [COPR](https://copr.fedorainfracloud.org/coprs/taw/ipfs/): `dnf install kubo`             | [![COPR: taw](https://img.shields.io/badge/COPR-taw-51A2DA?logo=fedora)](https://copr.fedorainfracloud.org/coprs/taw/ipfs/)                    |
+| Nix          | `nix-env -i kubo`                                                                         | [![nixpkgs unstable](https://repology.org/badge/version-for-repo/nix_unstable/kubo.svg)](https://search.nixos.org/packages?query=kubo)         |
+| Gentoo       | `emerge -a net-p2p/kubo`                                                                  | [![Gentoo package](https://repology.org/badge/version-for-repo/gentoo/kubo.svg)](https://packages.gentoo.org/packages/net-p2p/kubo)            |
+| openSUSE     | `zypper install kubo`                                                                     | [![openSUSE Tumbleweed](https://repology.org/badge/version-for-repo/opensuse_tumbleweed/kubo.svg)](https://software.opensuse.org/package/kubo) |
+| Solus        | `sudo eopkg install kubo`                                                                 | [![Solus package](https://repology.org/badge/version-for-repo/solus/kubo.svg)](https://packages.getsol.us/shannon/k/kubo/)                     |
+| Guix         | `guix install kubo`                                                                       | [![Guix package](https://repology.org/badge/version-for-repo/gnuguix/kubo.svg)](https://packages.guix.gnu.org/packages/kubo/)                  |
+| _other_      | [See Repology for the full list](https://repology.org/project/kubo/versions)              |                                                                                                                                                |
 
 ~~Snap~~ no longer supported ([#8688](https://github.com/ipfs/kubo/issues/8688))
 
 #### macOS
 
-| Manager | Install | Version |
-|---------|---------|---------|
-| Homebrew | `brew install ipfs` | [![Homebrew](https://repology.org/badge/version-for-repo/homebrew/kubo.svg)](https://formulae.brew.sh/formula/ipfs) |
-| MacPorts | `sudo port install ipfs` | [![MacPorts](https://repology.org/badge/version-for-repo/macports/kubo.svg)](https://ports.macports.org/port/ipfs/) |
-| Nix | `nix-env -i kubo` | [![nixpkgs unstable](https://repology.org/badge/version-for-repo/nix_unstable/kubo.svg)](https://search.nixos.org/packages?query=kubo) |
-| _other_ | [See Repology for the full list](https://repology.org/project/kubo/versions) | |
+| Manager  | Install                                                                      | Version                                                                                                                                |
+| -------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Homebrew | `brew install ipfs`                                                          | [![Homebrew](https://repology.org/badge/version-for-repo/homebrew/kubo.svg)](https://formulae.brew.sh/formula/ipfs)                    |
+| MacPorts | `sudo port install ipfs`                                                     | [![MacPorts](https://repology.org/badge/version-for-repo/macports/kubo.svg)](https://ports.macports.org/port/ipfs/)                    |
+| Nix      | `nix-env -i kubo`                                                            | [![nixpkgs unstable](https://repology.org/badge/version-for-repo/nix_unstable/kubo.svg)](https://search.nixos.org/packages?query=kubo) |
+| _other_  | [See Repology for the full list](https://repology.org/project/kubo/versions) |                                                                                                                                        |
 
 #### Windows
 
-| Manager | Install | Version |
-|---------|---------|---------|
-| Scoop | `scoop install kubo` | [![Scoop](https://repology.org/badge/version-for-repo/scoop/kubo.svg)](https://scoop.sh/#/apps?q=kubo) |
-| _other_ | [See Repology for the full list](https://repology.org/project/kubo/versions) | |
+| Manager | Install                                                                      | Version                                                                                                |
+| ------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Scoop   | `scoop install kubo`                                                         | [![Scoop](https://repology.org/badge/version-for-repo/scoop/kubo.svg)](https://scoop.sh/#/apps?q=kubo) |
+| _other_ | [See Repology for the full list](https://repology.org/project/kubo/versions) |                                                                                                        |
 
 ~~Chocolatey~~ no longer supported ([#9341](https://github.com/ipfs/kubo/issues/9341))
 
 ## Documentation
 
-| Topic | Description |
-|-------|-------------|
-| [Configuration](docs/config.md) | All config options reference |
-| [Environment variables](docs/environment-variables.md) | Runtime settings via env vars |
-| [Experimental features](docs/experimental-features.md) | Opt-in features in development |
-| [HTTP Gateway](docs/gateway.md) | Path, subdomain, and trustless gateway setup |
-| [HTTP RPC clients](docs/http-rpc-clients.md) | Client libraries for Go, JS |
-| [Delegated routing](docs/delegated-routing.md) | Multi-router and HTTP routing |
-| [Metrics & monitoring](docs/metrics.md) | Prometheus metrics |
-| [FUSE mounts](docs/fuse.md) | Mount `/ipfs`, `/ipns`, `/mfs` as local filesystems |
-| [Content blocking](docs/content-blocking.md) | Denylist for public nodes |
-| [Customizing](docs/customizing.md) | Unsure if use Plugins, Boxo, or fork? |
-| [Debug guide](docs/debug-guide.md) | CPU profiles, memory analysis, tracing |
-| [Changelogs](docs/changelogs/) | Release notes for each version |
-| [All documentation](https://github.com/ipfs/kubo/tree/master/docs) | Full list of docs |
+| Topic                                                              | Description                                         |
+| ------------------------------------------------------------------ | --------------------------------------------------- |
+| [Configuration](docs/config.md)                                    | All config options reference                        |
+| [Environment variables](docs/environment-variables.md)             | Runtime settings via env vars                       |
+| [Experimental features](docs/experimental-features.md)             | Opt-in features in development                      |
+| [HTTP Gateway](docs/gateway.md)                                    | Path, subdomain, and trustless gateway setup        |
+| [HTTP RPC clients](docs/http-rpc-clients.md)                       | Client libraries for Go, JS                         |
+| [Delegated routing](docs/delegated-routing.md)                     | Multi-router and HTTP routing                       |
+| [Metrics & monitoring](docs/metrics.md)                            | Prometheus metrics                                  |
+| [FUSE mounts](docs/fuse.md)                                        | Mount `/ipfs`, `/ipns`, `/mfs` as local filesystems |
+| [Content blocking](docs/content-blocking.md)                       | Denylist for public nodes                           |
+| [Customizing](docs/customizing.md)                                 | Unsure if use Plugins, Boxo, or fork?               |
+| [Debug guide](docs/debug-guide.md)                                 | CPU profiles, memory analysis, tracing              |
+| [Changelogs](docs/changelogs/)                                     | Release notes for each version                      |
+| [All documentation](https://github.com/ipfs/kubo/tree/master/docs) | Full list of docs                                   |
 
 ## Development
 

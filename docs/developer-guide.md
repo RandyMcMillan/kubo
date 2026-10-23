@@ -56,12 +56,12 @@ This installs the binary to `$GOPATH/bin`.
 
 ## Building
 
-| Command | Description |
-|---------|-------------|
-| `make build` | build the `ipfs` binary to `cmd/ipfs/ipfs` |
-| `make install` | install to `$GOPATH/bin` |
-| `make nofuse` | build without FUSE support |
-| `make build CGO_ENABLED=0` | build without CGO (no C compiler needed) |
+| Command                    | Description                                |
+| -------------------------- | ------------------------------------------ |
+| `make build`               | build the `ipfs` binary to `cmd/ipfs/ipfs` |
+| `make install`             | install to `$GOPATH/bin`                   |
+| `make nofuse`              | build without FUSE support                 |
+| `make build CGO_ENABLED=0` | build without CGO (no C compiler needed)   |
 
 For Windows-specific instructions, see [windows.md](windows.md).
 
@@ -229,18 +229,18 @@ For multi-step experiments, store `IPFS_PATH` in a file to ensure consistency.
 
 ## Code Organization
 
-| Directory | Description |
-|-----------|-------------|
-| `cmd/ipfs/` | CLI entry point and binary |
-| `core/` | core IPFS node implementation |
-| `core/commands/` | CLI command definitions |
-| `core/coreapi/` | Go API implementation |
-| `client/rpc/` | HTTP RPC client |
-| `plugin/` | plugin system |
-| `repo/` | repository management |
-| `test/cli/` | Go-based CLI integration tests |
+| Directory        | Description                          |
+| ---------------- | ------------------------------------ |
+| `cmd/ipfs/`      | CLI entry point and binary           |
+| `core/`          | core IPFS node implementation        |
+| `core/commands/` | CLI command definitions              |
+| `core/coreapi/`  | Go API implementation                |
+| `client/rpc/`    | HTTP RPC client                      |
+| `plugin/`        | plugin system                        |
+| `repo/`          | repository management                |
+| `test/cli/`      | Go-based CLI integration tests       |
 | `test/sharness/` | legacy shell-based integration tests |
-| `docs/` | documentation |
+| `docs/`          | documentation                        |
 
 Key external dependencies:
 

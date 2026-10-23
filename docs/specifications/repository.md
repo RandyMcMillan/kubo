@@ -1,6 +1,7 @@
 # ![](https://img.shields.io/badge/status-wip-orange.svg?style=flat-square) IPFS Repo Spec
 
 **Author(s)**:
+
 - [Juan Benet](github.com/jbenet)
 
 **Abstract**
@@ -30,6 +31,7 @@ There are many possible repo implementations, depending on the storage media
 used. Most commonly, IPFS nodes use an [fs-repo](repository_fs.md).
 
 Repo Implementations:
+
 - [fs-repo](repository_fs.md) - stored in the os filesystem
 - mem-repo - stored in process memory
 - s3-repo - stored in amazon s3
@@ -44,6 +46,7 @@ The Repo stores a collection of [IPLD](https://github.com/ipld/specs#readme) obj
 - **hooks** - scripts to run at predefined times (not yet implemented)
 
 Note that the IPLD objects a repo stores are divided into:
+
 - **state** (system, control plane) used for the node's internal state
 - **content** (userland, data plane) which represent the user's cached and pinned data.
 
@@ -68,6 +71,7 @@ For example, the `fs-repo` simply includes a `version` file with the version num
 IPFS nodes store some IPLD objects locally. These are either (a) **state objects** required for local operation -- such as the `config` and `keys` -- or (b) **content objects** used to represent data locally available. **Content objects** are either _pinned_ (stored until they are unpinned) or _cached_ (stored until the next repo garbage collection).
 
 The name "datastore" comes from [go-datastore](https://github.com/jbenet/go-datastore), a library for swappable key-value stores. Like its name-sake, some repo implementations feature swappable datastores, for example:
+
 - an fs-repo with a leveldb datastore
 - an fs-repo with a boltdb datastore
 - an fs-repo with a union fs and leveldb datastore
@@ -85,6 +89,7 @@ Details on operation and storage of the keystore can be found in [`repository_fs
 ### config (state)
 
 The node's `config` (configuration) is a tree of variables, used to configure various aspects of operation. For example:
+
 - the set of bootstrap peers IPFS uses to connect to the network
 - the Swarm, API, and Gateway network listen addresses
 - the Datastore configuration regarding the construction and operation of the on-disk storage system.
@@ -100,6 +105,7 @@ It is recommended that `config` files avoid identifying information, so that the
 IPFS implementations may use multiple processes, or may disallow multiple processes from using the same repo simultaneously. Others may disallow using the same repo but may allow sharing _datastores_ simultaneously. This synchronization is accomplished via _locks_.
 
 All repos contain the following standard locks:
+
 - `repo.lock` - prevents concurrent access to the repo. Must be held to _read_ or _write_.
 
 ### datastore_spec

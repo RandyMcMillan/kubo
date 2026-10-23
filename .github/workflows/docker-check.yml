@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
   pull_request:
     paths-ignore:
-      - '**/*.md'
+      - "**/*.md"
   push:
     branches:
-      - 'master'
+      - "master"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
@@ -79,6 +79,6 @@ jobs:
             type=gha
             type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=gha,mode=max
-      
+
       - name: Test Docker image
         run: docker run --rm $IMAGE_NAME:$WIP_IMAGE_TAG --version

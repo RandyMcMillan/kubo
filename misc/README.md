@@ -26,17 +26,18 @@ WantedBy=default.target
 
 To run this in your user session, save it as `~/.config/systemd/user/ipfs.service` (creating directories as necessary). Once you run `ipfs init` to create your IPFS settings, you can control the daemon using the following commands:
 
-* `systemctl --user start ipfs` - start the daemon
-* `systemctl --user stop ipfs` - stop the daemon
-* `systemctl --user status ipfs` - get status of the daemon
-* `systemctl --user enable ipfs` - enable starting the daemon at boot
-* `systemctl --user disable ipfs` - disable starting the daemon at boot
+- `systemctl --user start ipfs` - start the daemon
+- `systemctl --user stop ipfs` - stop the daemon
+- `systemctl --user status ipfs` - get status of the daemon
+- `systemctl --user enable ipfs` - enable starting the daemon at boot
+- `systemctl --user disable ipfs` - disable starting the daemon at boot
 
-*Note:* If you want this `--user` service to run at system boot, you must [`enable-linger`](http://www.freedesktop.org/software/systemd/man/loginctl.html) on the account that runs the service:
+_Note:_ If you want this `--user` service to run at system boot, you must [`enable-linger`](http://www.freedesktop.org/software/systemd/man/loginctl.html) on the account that runs the service:
 
 ```
 # loginctl enable-linger [user]
 ```
+
 Read more about `--user` services here: [wiki.archlinux.org:Systemd ](https://wiki.archlinux.org/index.php/Systemd/User#Automatic_start-up_of_systemd_user_instances)
 
 #### P2P tunnel services
@@ -50,13 +51,14 @@ see [docs/p2p-tunnels.md](../docs/p2p-tunnels.md) for examples using the
 - Here is a full-featured sample service file: https://github.com/dylanPowers/ipfs-linux-service/blob/master/init.d/ipfs
 - Use `service` or your distribution's equivalent to control the service.
 
-##  upstart
+## upstart
 
 - And below is a very basic sample upstart job. **Note the username jbenet**.
 
 ```
 cat /etc/init/ipfs.conf
 ```
+
 ```
 description "ipfs: interplanetary filesystem"
 
@@ -120,6 +122,7 @@ Similar to `systemd`, on macOS you can run `go-ipfs` via a user LaunchAgent.
 </dict>
 </plist>
 ```
+
 The reason for running `ipfs` under a shell is to avoid needing to hard-code the user's home directory in the job.
 
 - To start the job, run `launchctl load ~/Library/LaunchAgents/io.ipfs.go-ipfs.plist`

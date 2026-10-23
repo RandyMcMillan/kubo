@@ -2,4 +2,4 @@
 
 This directory contains the go-ipfs assets:
 
-* Getting started documentation (`init-doc`).
+- Getting started documentation (`init-doc`).

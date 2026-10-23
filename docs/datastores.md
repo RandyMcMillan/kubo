@@ -53,10 +53,10 @@ Why directory size matters:
 - The shards are ordinary directories, and every tool that touches them slows down as they grow: `ls`, `du`, `rsync`, backup agents, and any directory scan on a rotational disk. A directory with a few thousand entries keeps those tools usable.
 - A lookup of a single block (`Has`, `Get`, `GetSize`) is one `stat` or `open` of a known path. Filesystems with hashed directories (ext4 `dir_index`, XFS, btrfs, ZFS) do that in constant time at any directory size. Shard depth does not change bitswap or gateway latency. For that, size [`Datastore.BlockKeyCacheSize`](config.md#datastoreblockkeycachesize) and [`Datastore.BloomFilterSize`](config.md#datastorebloomfiltersize).
 
-| `shardFunc`      | Directories | Files per directory at 60M blocks | How to get it                                  |
-|------------------|------------:|----------------------------------:|------------------------------------------------|
-| `next-to-last/2` | 1024        | ~58k                              | default in every flatfs profile                |
-| `next-to-last/3` | 32768       | ~1.8k                             | config file passed to `ipfs init` (see below)  |
+| `shardFunc`      | Directories | Files per directory at 60M blocks | How to get it                                 |
+| ---------------- | ----------: | --------------------------------: | --------------------------------------------- |
+| `next-to-last/2` |        1024 |                              ~58k | default in every flatfs profile               |
+| `next-to-last/3` |       32768 |                             ~1.8k | config file passed to `ipfs init` (see below) |
 
 Opt in when you expect the repo to grow past about 10M blocks (`NumObjects` in `ipfs repo stat`). At that point the default layout puts more than ~10k files in every directory. With the default 256 KiB chunks that is a few terabytes. A repo of small files or small chunks gets there far sooner. Several large pinning and gateway operators run `next-to-last/3`, and ipfs-cluster's [production guide](https://ipfscluster.io/documentation/deployment/setup/) gives the same advice for "multi-terabyte repositories", with XFS or ZFS recommended.
 
@@ -131,26 +131,26 @@ Uses [pebble](https://github.com/cockroachdb/pebble) as a key-value store.
 
 ```json
 {
-	"type": "pebbleds",
-	"path": "<location of pebble inside repo>",
+  "type": "pebbleds",
+  "path": "<location of pebble inside repo>"
 }
 ```
 
 The following options are available for tuning pebble.
 If they are not configured (or assigned their zero-valued), then default values are used.
 
-* `bytesPerSync`: int, Sync sstables periodically in order to smooth out writes to disk. (default: 512KB)
-* `disableWAL`: true|false, Disable the write-ahead log (WAL) at expense of prohibiting crash recovery. (default: false)
-* `cacheSize`: Size of pebble's shared block cache. (default: 8MB)
-* `formatVersionMajor`: int, Sets the format of pebble on-disk files. If 0 or unset, automatically convert to latest format.
-* `l0CompactionThreshold`: int, Count of L0 files necessary to trigger an L0 compaction.
-* `l0StopWritesThreshold`: int, Limit on L0 read-amplification, computed as the number of L0 sublevels.
-* `lBaseMaxBytes`: int, Maximum number of bytes for LBase. The base level is the level which L0 is compacted into.
-* `maxConcurrentCompactions`: int, Maximum number of concurrent compactions. (default: 1)
-* `memTableSize`: int, Size of a MemTable in steady state. The actual MemTable size starts at min(256KB, MemTableSize) and doubles for each subsequent MemTable up to MemTableSize (default: 4MB)
-* `memTableStopWritesThreshold`: int, Limit on the number of queued of MemTables. (default: 2)
-* `walBytesPerSync`: int: Sets the number of bytes to write to a WAL before calling Sync on it in the background. (default: 0, no background syncing)
-* `walMinSyncSeconds`: int: Sets the minimum duration between syncs of the WAL. (default: 0)
+- `bytesPerSync`: int, Sync sstables periodically in order to smooth out writes to disk. (default: 512KB)
+- `disableWAL`: true|false, Disable the write-ahead log (WAL) at expense of prohibiting crash recovery. (default: false)
+- `cacheSize`: Size of pebble's shared block cache. (default: 8MB)
+- `formatVersionMajor`: int, Sets the format of pebble on-disk files. If 0 or unset, automatically convert to latest format.
+- `l0CompactionThreshold`: int, Count of L0 files necessary to trigger an L0 compaction.
+- `l0StopWritesThreshold`: int, Limit on L0 read-amplification, computed as the number of L0 sublevels.
+- `lBaseMaxBytes`: int, Maximum number of bytes for LBase. The base level is the level which L0 is compacted into.
+- `maxConcurrentCompactions`: int, Maximum number of concurrent compactions. (default: 1)
+- `memTableSize`: int, Size of a MemTable in steady state. The actual MemTable size starts at min(256KB, MemTableSize) and doubles for each subsequent MemTable up to MemTableSize (default: 4MB)
+- `memTableStopWritesThreshold`: int, Limit on the number of queued of MemTables. (default: 2)
+- `walBytesPerSync`: int: Sets the number of bytes to write to a WAL before calling Sync on it in the background. (default: 0, no background syncing)
+- `walMinSyncSeconds`: int: Sets the minimum duration between syncs of the WAL. (default: 0)
 
 > [!TIP]
 > Start using pebble with only default values and configure tuning items are needed for your needs. For a more complete description of these values, see: `https://pkg.go.dev/github.com/cockroachdb/pebble@vA.B.C#Options` (where `A.B.C` is pebble version from Kubo's `go.mod`).
@@ -208,17 +208,17 @@ The mountpoints are added as keys within the child datastore definitions.
 
 ```json
 {
-	"type": "mount",
-	"mounts": [
-		{
-			// Insert other datastore definition here, but add the following key:
-			"mountpoint": "/path/to/handle"
-		},
-		{
-			// Insert other datastore definition here, but add the following key:
-			"mountpoint": "/path/to/handle"
-		},
-	]
+  "type": "mount",
+  "mounts": [
+    {
+      // Insert other datastore definition here, but add the following key:
+      "mountpoint": "/path/to/handle"
+    },
+    {
+      // Insert other datastore definition here, but add the following key:
+      "mountpoint": "/path/to/handle"
+    }
+  ]
 }
 ```
 
@@ -235,4 +235,3 @@ Every operation goes through the wrapper, which adds overhead. Use the `-measure
 	"child": { datastore being wrapped }
 }
 ```
-

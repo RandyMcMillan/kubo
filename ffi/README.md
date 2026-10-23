@@ -78,6 +78,7 @@ command through Kubo's own in-process command framework (`cli.Parse` +
 without spawning a subprocess or a separate binary.
 
 Caveats for the command runner:
+
 - Command lines must NOT include the leading `ipfs` token (e.g. `"version"`,
   not `"ipfs version"`).
 - The returned string is the command's emitted value, which is frequently a

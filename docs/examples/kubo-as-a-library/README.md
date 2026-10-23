@@ -7,7 +7,7 @@ By the end of this tutorial, you will learn how to:
 - Spawn an IPFS node that runs in process (no separate daemon process)
 - Create an IPFS repo
 - Add files and directories to IPFS
-- Retrieve those files and directories using ``cat`` and ``get``
+- Retrieve those files and directories using `cat` and `get`
 - Connect to other nodes in the network
 - Retrieve a file that only exists on the network
 - The difference between a node in DHT client mode and full DHT mode
@@ -15,10 +15,10 @@ By the end of this tutorial, you will learn how to:
 All of this using only golang!
 
 In order to complete this tutorial, you will need:
+
 - golang installed on your machine. See how at https://golang.org/doc/install
 - git installed on your machine (so that go can download the repo and the necessary dependencies). See how at https://git-scm.com/downloads
 - IPFS Desktop (for convenience) installed and running on your machine. See how at https://github.com/ipfs-shipyard/ipfs-desktop#ipfs-desktop
-
 
 **Disclaimer**: The example code is quite large (more than 300 lines of code) and it has been a great way to understand the scope of the [go-ipfs Core API](https://godoc.org/github.com/ipfs/interface-go-ipfs-core), and how it can be improved to further the user experience. You can expect to be able to come back to this example in the future and see how the number of lines of code have decreased and how the example have become simpler, making other go-ipfs programs simpler as well.
 

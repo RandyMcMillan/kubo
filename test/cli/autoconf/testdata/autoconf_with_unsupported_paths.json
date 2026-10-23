@@ -17,37 +17,23 @@
           "/routing/v1/peers",
           "/routing/v1/ipns"
         ],
-        "Write": [
-          "/routing/v1/ipns"
-        ]
+        "Write": ["/routing/v1/ipns"]
       }
     }
   },
   "DNSResolvers": {
-    "eth.": [
-      "https://dns.eth.limo/dns-query"
-    ]
+    "eth.": ["https://dns.eth.limo/dns-query"]
   },
   "DelegatedEndpoints": {
     "https://supported.example.com": {
       "Systems": ["AminoDHT"],
-      "Read": [
-        "/routing/v1/providers",
-        "/routing/v1/peers"
-      ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Read": ["/routing/v1/providers", "/routing/v1/peers"],
+      "Write": ["/routing/v1/ipns"]
     },
     "https://unsupported.example.com": {
       "Systems": ["AminoDHT"],
-      "Read": [
-        "/example/v0/read",
-        "/api/v1/custom"
-      ],
-      "Write": [
-        "/example/v0/write"
-      ]
+      "Read": ["/example/v0/read", "/api/v1/custom"],
+      "Write": ["/example/v0/write"]
     },
     "https://mixed.example.com": {
       "Systems": ["AminoDHT"],
@@ -56,9 +42,7 @@
         "/unsupported/path",
         "/routing/v1/peers"
       ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Write": ["/routing/v1/ipns"]
     }
   }
 }

@@ -23,34 +23,25 @@
           "/routing/v1/peers",
           "/routing/v1/ipns"
         ],
-        "Write": [
-          "/routing/v1/ipns"
-        ]
+        "Write": ["/routing/v1/ipns"]
       }
     },
     "IPNI": {
       "URL": "https://ipni.example.com",
       "Description": "Network Indexer - content routing database for large storage providers",
       "DelegatedConfig": {
-        "Read": [
-          "/routing/v1/providers"
-        ],
+        "Read": ["/routing/v1/providers"],
         "Write": []
       }
     }
   },
   "DNSResolvers": {
-    "eth.": [
-      "https://dns.eth.limo/dns-query",
-      "https://dns.eth.link/dns-query"
-    ]
+    "eth.": ["https://dns.eth.limo/dns-query", "https://dns.eth.link/dns-query"]
   },
   "DelegatedEndpoints": {
     "https://ipni.example.com": {
       "Systems": ["IPNI"],
-      "Read": [
-        "/routing/v1/providers"
-      ],
+      "Read": ["/routing/v1/providers"],
       "Write": []
     },
     "https://delegated-ipfs.dev": {
@@ -60,9 +51,7 @@
         "/routing/v1/peers",
         "/routing/v1/ipns"
       ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Write": ["/routing/v1/ipns"]
     }
   }
 }

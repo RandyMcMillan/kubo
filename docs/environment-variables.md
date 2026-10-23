@@ -45,27 +45,27 @@ Default: ~/.ipfs
 
 Specifies the log level for Kubo.
 
-`IPFS_LOGGING` is a deprecated alias for the `GOLOG_LOG_LEVEL` environment variable.  See below.
+`IPFS_LOGGING` is a deprecated alias for the `GOLOG_LOG_LEVEL` environment variable. See below.
 
 ## `IPFS_LOGGING_FMT`
 
 Specifies the log message format.
 
-`IPFS_LOGGING_FMT` is a deprecated alias for the `GOLOG_LOG_FMT` environment variable.  See below.
+`IPFS_LOGGING_FMT` is a deprecated alias for the `GOLOG_LOG_FMT` environment variable. See below.
 
 ## `GOLOG_LOG_LEVEL`
 
-Specifies the log-level, both globally and on a per-subsystem basis.  Level can be one of:
+Specifies the log-level, both globally and on a per-subsystem basis. Level can be one of:
 
-* `debug`
-* `info`
-* `warn`
-* `error`
-* `dpanic`
-* `panic`
-* `fatal`
+- `debug`
+- `info`
+- `warn`
+- `error`
+- `dpanic`
+- `panic`
+- `fatal`
 
-Per-subsystem levels can be specified with `subsystem=level`.  One global level and one or more per-subsystem levels
+Per-subsystem levels can be specified with `subsystem=level`. One global level and one or more per-subsystem levels
 can be specified by separating them with commas.
 
 Default: `error`
@@ -82,7 +82,7 @@ See [Known logger subsystems](./debug-guide.md#known-logger-subsystems) for subs
 
 ## `GOLOG_LOG_FMT`
 
-Specifies the log message format.  It supports the following values:
+Specifies the log message format. It supports the following values:
 
 - `color` -- human readable, colorized (ANSI) output
 - `nocolor` -- human readable, plain-text output.
@@ -93,6 +93,7 @@ For example, to log structured JSON (for easier parsing):
 ```bash
 export GOLOG_LOG_FMT="json"
 ```
+
 The logging format defaults to `color` when the output is a terminal, and `nocolor` otherwise.
 
 ## `GOLOG_FILE`
@@ -166,6 +167,7 @@ both AutoConf-provided endpoints and any manually configured delegated routers.
 The value should be a space or comma-separated list of HTTP routing endpoint URLs.
 
 This is useful for:
+
 - Testing and debugging in offline contexts
 - Overriding AutoConf endpoints temporarily
 - Using custom or private HTTP routing services
@@ -202,6 +204,7 @@ content will be blocked.
 ## `IPFS_WAIT_REPO_LOCK`
 
 Specifies the amount of time to wait for the repo lock. Set the value of this variable to a string that can be [parsed](https://pkg.go.dev/time@go1.24.3#ParseDuration) as a golang `time.Duration`. For example:
+
 ```
 IPFS_WAIT_REPO_LOCK="15s"
 ```
@@ -300,7 +303,7 @@ By default Kubo tries to reuse the same listener port for raw TCP and WebSockets
 If this is an issue, you can disable it by setting `LIBP2P_TCP_MUX` to `false` and use separate ports for each TCP transport.
 
 > [!CAUTION]
-> This configuration option may be removed once `libp2p.ShareTCPListener()`  becomes default in go-libp2p.
+> This configuration option may be removed once `libp2p.ShareTCPListener()` becomes default in go-libp2p.
 
 Default: `true`
 
@@ -324,7 +327,6 @@ Default: use config (not set)
 
 Enables tracing of [libp2p Network Resource Manager](https://github.com/libp2p/go-libp2p-resource-manager#readme)
 and outputs it to `rcmgr.json.gz`
-
 
 Default: disabled (not set)
 

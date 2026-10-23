@@ -14,6 +14,7 @@ Starting from **repo version 17**, Kubo uses **embedded migrations** that are bu
 ### Migration Functions
 
 #### `migrations.RunEmbeddedMigrations()`
+
 - **Purpose**: Runs migrations that are embedded directly in the Kubo binary
 - **Scope**: Handles repo version 17+ migrations
 - **Performance**: Fast execution, no network downloads required
@@ -21,6 +22,7 @@ Starting from **repo version 17**, Kubo uses **embedded migrations** that are bu
 - **Usage**: Primary migration method for modern repo versions
 
 **Parameters**:
+
 - `ctx`: Context for cancellation and timeouts
 - `targetVersion`: Target repository version to migrate to
 - `repoPath`: Path to the IPFS repository directory
@@ -34,6 +36,7 @@ if err != nil {
 ```
 
 #### `migrations.RunMigration()` with `migrations.ReadMigrationConfig()`
+
 - **Purpose**: Runs external binary migrations downloaded from fs-repo-migrations
 - **Scope**: Handles legacy repo versions <17 and serves as fallback
 - **Performance**: Slower due to network downloads and external process execution
@@ -93,6 +96,7 @@ var embeddedMigrations = map[string]EmbeddedMigration{
 ## Migration Requirements
 
 Each embedded migration must:
+
 - Implement the `EmbeddedMigration` interface
 - Be reversible with proper backup handling
 - Use atomic file operations to prevent corruption
@@ -103,6 +107,7 @@ Each embedded migration must:
 ## External Migration Support
 
 External migrations are maintained for:
+
 - **Backward compatibility** with repo versions <17
 - **Fallback mechanism** if embedded migrations fail
 - **Legacy installations** that cannot be upgraded directly
@@ -112,6 +117,7 @@ The external migration system will continue to work but is not the preferred met
 ## Security and Safety
 
 All migrations (embedded and external) include:
+
 - **Atomic operations**: Prevent repository corruption
 - **Backup creation**: Allow rollback if migration fails
 - **Version validation**: Ensure migrations run on correct repo versions

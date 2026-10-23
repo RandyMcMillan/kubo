@@ -497,7 +497,6 @@ and Bob (full access with Bearer token):
     }
   }
 }
-
 ```
 
 #### `API.Authorizations: AuthSecret`
@@ -661,7 +660,7 @@ AutoConf supports path-based routing URLs that automatically enable specific rou
 **Supported paths:**
 
 - `/routing/v1/providers` - Enables provider record lookups only
-- `/routing/v1/peers` - Enables peer routing lookups only  
+- `/routing/v1/peers` - Enables peer routing lookups only
 - `/routing/v1/ipns` - Enables IPNS record operations only
 - No path - Enables all routing operations (backward compatibility)
 
@@ -670,12 +669,10 @@ AutoConf supports path-based routing URLs that automatically enable specific rou
 ```json
 {
   "DelegatedRouters": {
-    "mainnet-for-nodes-with-dht": [
-      "https://cid.contact/routing/v1/providers"
-    ],
+    "mainnet-for-nodes-with-dht": ["https://cid.contact/routing/v1/providers"],
     "mainnet-for-nodes-without-dht": [
       "https://delegated-ipfs.dev/routing/v1/providers",
-      "https://delegated-ipfs.dev/routing/v1/peers", 
+      "https://delegated-ipfs.dev/routing/v1/peers",
       "https://delegated-ipfs.dev/routing/v1/ipns"
     ]
   },
@@ -762,7 +759,7 @@ By default, the certificates are requested from Let's Encrypt. Origin and ration
 
 > [!NOTE]
 > Public good DNS and [p2p-forge] infrastructure at `libp2p.direct` is run by the team at [Interplanetary Shipyard](https://ipshipyard.com).
->
+
 [p2p-forge]: https://github.com/ipshipyard/p2p-forge
 
 Default: `{}`
@@ -984,7 +981,7 @@ Type: `bool`
 The size in **bytes** of the blockstore's [bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 A value of `0` disables the feature.
 
-The bloom filter answers "does the blockstore *not* have this CID?" from RAM
+The bloom filter answers "does the blockstore _not_ have this CID?" from RAM
 without touching the datastore. A negative answer is exact (no false
 negatives, so blocks are never falsely reported missing); a positive answer
 is probabilistic and falls through to the underlying blockstore for
@@ -997,7 +994,7 @@ This cache pays off most on nodes that field many requests for content they
 don't host: public gateways, mirrors, and peers asked to serve
 opportunistically-cached blocks.
 
-The complementary cache for the *positive* path (block exists, look up its
+The complementary cache for the _positive_ path (block exists, look up its
 size) is [`Datastore.BlockKeyCacheSize`](#datastoreblockkeycachesize).
 
 #### How kubo's bloom filter is sized
@@ -1026,13 +1023,13 @@ sizing:
 Power-of-two `BloomFilterSize` values for common blockset sizes, with the
 FPR you can expect at the design point and at 2× growth:
 
-| Expected blocks (`n`) | `BloomFilterSize` | FPR at `n` | FPR at 2× `n` |
-|---:|---:|---:|---:|
-| 10,000,000  | `16777216`  (16 MiB)  | ~0.18% | ~5%  |
-| 25,000,000  | `33554432`  (32 MiB)  | ~0.58% | ~11% |
-| 50,000,000  | `67108864`  (64 MiB)  | ~0.58% | ~11% |
-| 100,000,000 | `134217728` (128 MiB) | ~0.58% | ~11% |
-| 200,000,000 | `268435456` (256 MiB) | ~0.58% | ~11% |
+| Expected blocks (`n`) |     `BloomFilterSize` | FPR at `n` | FPR at 2× `n` |
+| --------------------: | --------------------: | ---------: | ------------: |
+|            10,000,000 |   `16777216` (16 MiB) |     ~0.18% |           ~5% |
+|            25,000,000 |   `33554432` (32 MiB) |     ~0.58% |          ~11% |
+|            50,000,000 |   `67108864` (64 MiB) |     ~0.58% |          ~11% |
+|           100,000,000 | `134217728` (128 MiB) |     ~0.58% |          ~11% |
+|           200,000,000 | `268435456` (256 MiB) |     ~0.58% |          ~11% |
 
 For a tighter FPR at the design point, step up to the next power of two.
 
@@ -1265,7 +1262,7 @@ Type: `bool`
 
 #### `Discovery.MDNS.Interval`
 
-**REMOVED:**  this is not configurable anymore
+**REMOVED:** this is not configurable anymore
 in the [new mDNS implementation](https://github.com/libp2p/zeroconf#readme).
 
 ## `Experimental`
@@ -1305,7 +1302,7 @@ Type: `bool`
 ### `Gateway.NoDNSLink`
 
 A boolean to configure whether DNSLink lookup for value in `Host` HTTP header
-should be performed.  If DNSLink is present, the content path stored in the DNS TXT
+should be performed. If DNSLink is present, the content path stored in the DNS TXT
 record becomes the `/` and the respective payload is returned to the client.
 
 Default: `false`
@@ -1509,7 +1506,7 @@ Type: `optionalstring` (url)
 
 ### `Gateway.FastDirIndexThreshold`
 
-**REMOVED**: this option is [no longer necessary](https://github.com/ipfs/kubo/pull/9481). Ignored since  [Kubo 0.18](https://github.com/ipfs/kubo/blob/master/docs/changelogs/v0.18.md).
+**REMOVED**: this option is [no longer necessary](https://github.com/ipfs/kubo/pull/9481). Ignored since [Kubo 0.18](https://github.com/ipfs/kubo/blob/master/docs/changelogs/v0.18.md).
 
 ### `Gateway.Writable`
 
@@ -1559,7 +1556,7 @@ Example:
   "Gateway": {
     "PublicGateways": {
       "example.com": {
-        "Paths": ["/ipfs"],
+        "Paths": ["/ipfs"]
       }
     }
   }
@@ -1581,7 +1578,7 @@ between content roots.
 
 - `true` - enables [subdomain gateway](https://docs.ipfs.tech/how-to/address-ipfs-on-web/#subdomain-gateway) at `http://*.{hostname}/`
   - **Requires whitelist:** make sure respective `Paths` are set.
-      For example, `Paths: ["/ipfs", "/ipns"]` are required for `http://{cid}.ipfs.{hostname}` and `http://{foo}.ipns.{hostname}` to work:
+    For example, `Paths: ["/ipfs", "/ipns"]` are required for `http://{cid}.ipfs.{hostname}` and `http://{foo}.ipns.{hostname}` to work:
 
         ```json
         "Gateway": {
@@ -2058,7 +2055,7 @@ will be cached and read from cache before checking for updates.
     request. If you want near-real-time IPNS, set it to a low, but still
     sensible value, such as `1m`.
 
-Default: No upper bound, [TTL from IPNS Record](https://specs.ipfs.tech/ipns/ipns-record/#ttl-uint64)  (see `ipns name publish --help`) is always respected.
+Default: No upper bound, [TTL from IPNS Record](https://specs.ipfs.tech/ipns/ipns-record/#ttl-uint64) (see `ipns name publish --help`) is always respected.
 
 Type: `optionalDuration`
 
@@ -2066,7 +2063,7 @@ Type: `optionalDuration`
 
 Enables [IPNS over PubSub](https://specs.ipfs.tech/ipns/ipns-pubsub-router/) for publishing and resolving IPNS records in real time.
 
-**EXPERIMENTAL:**  read about current limitations at [experimental-features.md#ipns-pubsub](./experimental-features.md#ipns-pubsub).
+**EXPERIMENTAL:** read about current limitations at [experimental-features.md#ipns-pubsub](./experimental-features.md#ipns-pubsub).
 
 Default: `disabled`
 
@@ -2222,9 +2219,9 @@ Example:
   "Pinning": {
     "RemoteServices": {
       "myPinningService": {
-        "API" : {
-          "Endpoint" : "https://pinningservice.tld:1234/my/api/path",
-          "Key" : "someOpaqueKey"
+        "API": {
+          "Endpoint": "https://pinningservice.tld:1234/my/api/path",
+          "Key": "someOpaqueKey"
         }
       }
     }
@@ -2615,9 +2612,9 @@ provide queue to the datastore, and restores them on restart. This ensures:
 
 - The reprovide cycle continues from where it left off instead of starting over
 - Any CIDs in the provide queue during shutdown are restored and provided after
-restart
+  restart
 - CIDs that missed their reprovide window while the node was offline are queued
-for immediate reproviding
+  for immediate reproviding
 
 When disabled, the provider starts fresh on each restart, discarding any
 previous reprovide cycle state and provide queue. On a fresh start, all CIDs
@@ -2782,7 +2779,7 @@ setting only changes the bits-per-CID ratio of each bloom in the chain.
 Memory tradeoff (approximate, before `ipfs/bbloom`'s power-of-two rounding):
 
 | `Provide.BloomFPRate` | Approx. FP rate | Bytes per CID |
-|-----------------------|-----------------|---------------|
+| --------------------- | --------------- | ------------- |
 | `1000000`             | 1 in 1M         | ~3            |
 | (default)             | ~1 in 4.75M     | ~4            |
 | `10000000`            | 1 in 10M        | ~5            |
@@ -3228,7 +3225,7 @@ Parallel:
   - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)` (`10s`, `1m`, `2h`). Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
   - `ExecuteAfter:duration`: Providing this param will delay the execution of that router at the specified time. It accepts strings compatible with Go `time.ParseDuration(string)` (`10s`, `1m`, `2h`).
   - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
-- `Timeout:duration`: Global timeout.  It accepts strings compatible with Go `time.ParseDuration(string)` (`10s`, `1m`, `2h`).
+- `Timeout:duration`: Global timeout. It accepts strings compatible with Go `time.ParseDuration(string)` (`10s`, `1m`, `2h`).
 
 Sequential:
 
@@ -3236,7 +3233,7 @@ Sequential:
   - `Name:string`: Name of the router. It should be one of the previously added to `Routers` list.
   - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)`. Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
   - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
-- `Timeout:duration`: Global timeout.  It accepts strings compatible with Go `time.ParseDuration(string)`.
+- `Timeout:duration`: Global timeout. It accepts strings compatible with Go `time.ParseDuration(string)`.
 
 Default: `{}` (use the safe implicit defaults)
 
@@ -3719,7 +3716,7 @@ Each field in this section is a `flag`.
 
 [TCP](https://en.wikipedia.org/wiki/Transmission_Control_Protocol) is a simple
 and widely deployed transport, it should be compatible with most implementations
-and network configurations.  TCP doesn't directly support encryption and/or
+and network configurations. TCP doesn't directly support encryption and/or
 multiplexing, so libp2p will layer a security & multiplexing transport over it.
 
 Default: Enabled
@@ -3773,7 +3770,7 @@ Listen Addresses:
 [Libp2p Relay](https://github.com/libp2p/specs/tree/master/relay) proxy
 transport that forms connections by hopping between multiple libp2p nodes.
 Allows IPFS node to connect to other peers using their `/p2p-circuit`
-[multiaddrs][libp2p-multiaddrs].  This transport is primarily useful for bypassing firewalls and
+[multiaddrs][libp2p-multiaddrs]. This transport is primarily useful for bypassing firewalls and
 NATs.
 
 See also:
@@ -3881,7 +3878,7 @@ Type: `priority`
 
 #### `Swarm.Transports.Security.SECIO`
 
-**REMOVED**:  support for SECIO has been removed. Please remove this option from your config.
+**REMOVED**: support for SECIO has been removed. Please remove this option from your config.
 
 #### `Swarm.Transports.Security.Noise`
 
@@ -3953,7 +3950,7 @@ Example:
 Be mindful that:
 
 - Currently only `https://` URLs for [DNS over HTTPS (DoH)](https://en.wikipedia.org/wiki/DNS_over_HTTPS) endpoints are supported as values.
-- The default catch-all resolver is the cleartext one provided by your operating system. It can be overridden by adding a DoH entry for the DNS root indicated by  `.` as illustrated above.
+- The default catch-all resolver is the cleartext one provided by your operating system. It can be overridden by adding a DoH entry for the DNS root indicated by `.` as illustrated above.
 - Out-of-the-box support for selected non-ICANN TLDs relies on third-party centralized services provided by respective communities on best-effort basis.
 - The special value `"auto"` uses DNS resolvers from [AutoConf](#autoconf) when enabled. For example: `{".": "auto"}` uses any custom DoH resolver (global or per TLD) provided by AutoConf system.
 - When [`AutoTLS.SkipDNSLookup`](#autotlsskipdnslookup) is enabled (default), domains matching [`AutoTLS.DomainSuffix`](#autotlsdomainsuffix) (default: `libp2p.direct`) are resolved locally by parsing the IP directly from the hostname. Set `AutoTLS.SkipDNSLookup=false` to force network DNS lookups for these domains.
@@ -4436,15 +4433,15 @@ listeners keep working over loopback.
 
 #### IPv6 prefixes filtered by `server` profile
 
-| Multiaddr                   | Description                                                        | Reference                    |
-| --------------------------- | ------------------------------------------------------------------ | ---------------------------- |
+| Multiaddr                   | Description                                                         | Reference                    |
+| --------------------------- | ------------------------------------------------------------------- | ---------------------------- |
 | `/ip6/::/ipcidr/3`          | IANA-reserved `0000::/3` (catches unallocated leaks like `1e::/16`) | [RFC 4291 §2.4][rfc4291-2.4] |
-| `/ip6/::1/ipcidr/128`       | Loopback                                                           | [RFC 4291 §2.4][rfc4291-2.4] |
-| `/ip6/100::/ipcidr/64`      | Discard-only                                                       | [RFC 6666]                   |
-| `/ip6/2001:2::/ipcidr/48`   | Benchmarking                                                       | [RFC 5180]                   |
-| `/ip6/2001:db8::/ipcidr/32` | Documentation                                                      | [RFC 3849]                   |
-| `/ip6/fc00::/ipcidr/7`      | Unique local addresses (ULA)                                       | [RFC 4193]                   |
-| `/ip6/fe80::/ipcidr/10`     | Link-local unicast                                                 | [RFC 4291]                   |
+| `/ip6/::1/ipcidr/128`       | Loopback                                                            | [RFC 4291 §2.4][rfc4291-2.4] |
+| `/ip6/100::/ipcidr/64`      | Discard-only                                                        | [RFC 6666]                   |
+| `/ip6/2001:2::/ipcidr/48`   | Benchmarking                                                        | [RFC 5180]                   |
+| `/ip6/2001:db8::/ipcidr/32` | Documentation                                                       | [RFC 3849]                   |
+| `/ip6/fc00::/ipcidr/7`      | Unique local addresses (ULA)                                        | [RFC 4193]                   |
+| `/ip6/fe80::/ipcidr/10`     | Link-local unicast                                                  | [RFC 4291]                   |
 
 #### Overriding specific entries
 
@@ -4453,19 +4450,19 @@ If you need peering over one of the prefixes above, remove that entry from
 [`Addresses.NoAnnounce`](#addressesnoannounce) after applying the profile.
 Or skip the profile and populate those fields manually.
 
-| Scenario                                           | Remove                       |
-| -------------------------------------------------- | ---------------------------- |
-| LAN peering over `10.0.0.0/8`                      | `/ip4/10.0.0.0/ipcidr/8`     |
-| LAN peering over `172.16.0.0/12`                   | `/ip4/172.16.0.0/ipcidr/12`  |
-| LAN peering over `192.168.0.0/16`                  | `/ip4/192.168.0.0/ipcidr/16` |
-| [Tailscale] or other CGNAT overlay (`100.64.0.0/10`) | `/ip4/100.64.0.0/ipcidr/10`  |
-| IPv6 ULA overlay ([WireGuard], [Tailscale], [Nebula], [ZeroTier], [cjdns]) | `/ip6/fc00::/ipcidr/7` |
-| Link-local IPv6 peering                            | `/ip6/fe80::/ipcidr/10`      |
-| Multiple daemons peering over `127.0.0.1`          | `/ip4/127.0.0.0/ipcidr/8`    |
-| Multiple daemons peering over IPv6 loopback `::1`  | `/ip6/::1/ipcidr/128` and `/ip6/::/ipcidr/3` |
+| Scenario                                                                       | Remove                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| LAN peering over `10.0.0.0/8`                                                  | `/ip4/10.0.0.0/ipcidr/8`                                                                                                                                                                                     |
+| LAN peering over `172.16.0.0/12`                                               | `/ip4/172.16.0.0/ipcidr/12`                                                                                                                                                                                  |
+| LAN peering over `192.168.0.0/16`                                              | `/ip4/192.168.0.0/ipcidr/16`                                                                                                                                                                                 |
+| [Tailscale] or other CGNAT overlay (`100.64.0.0/10`)                           | `/ip4/100.64.0.0/ipcidr/10`                                                                                                                                                                                  |
+| IPv6 ULA overlay ([WireGuard], [Tailscale], [Nebula], [ZeroTier], [cjdns])     | `/ip6/fc00::/ipcidr/7`                                                                                                                                                                                       |
+| Link-local IPv6 peering                                                        | `/ip6/fe80::/ipcidr/10`                                                                                                                                                                                      |
+| Multiple daemons peering over `127.0.0.1`                                      | `/ip4/127.0.0.0/ipcidr/8`                                                                                                                                                                                    |
+| Multiple daemons peering over IPv6 loopback `::1`                              | `/ip6/::1/ipcidr/128` and `/ip6/::/ipcidr/3`                                                                                                                                                                 |
 | Local reverse proxy fronting a `/ws` (or other libp2p) listener on `127.0.0.1` | `/ip4/127.0.0.0/ipcidr/8` from `Swarm.AddrFilters` only (keep it in `Addresses.NoAnnounce`); also drop `/ip6/::1/ipcidr/128` and `/ip6/::/ipcidr/3` from `Swarm.AddrFilters` if the proxy uses IPv6 loopback |
-| [Yggdrasil] mesh peering (`200::/8`, `300::/8`)    | `/ip6/::/ipcidr/3`           |
-| NAT64 (`64:ff9b::/96`) reachability                | `/ip6/::/ipcidr/3`           |
+| [Yggdrasil] mesh peering (`200::/8`, `300::/8`)                                | `/ip6/::/ipcidr/3`                                                                                                                                                                                           |
+| NAT64 (`64:ff9b::/96`) reachability                                            | `/ip6/::/ipcidr/3`                                                                                                                                                                                           |
 
 #### Notes on `/ip6/::/ipcidr/3`
 
@@ -4832,8 +4829,8 @@ Optional durations allow specifying some duration value which has
 an implicit default when missing from the config file:
 
 - `null`/missing will apply the default value defined in Kubo sources (`.WithDefault("1h2m3s")`)
-- a string with a valid [go duration](#duration)  (e.g, `"1d2h4m40.01s"`).
+- a string with a valid [go duration](#duration) (e.g, `"1d2h4m40.01s"`).
 
-----
+---
 
 [multiaddr]: https://docs.ipfs.tech/concepts/glossary/#multiaddr

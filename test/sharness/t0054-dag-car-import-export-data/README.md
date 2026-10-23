@@ -3,13 +3,11 @@
 - lotus_testnet_export_256_multiroot.car
   - Export of the first 256 block of the testnet chain, with 3 tipset roots. Exported from Lotus by @traviperson on 2019-03-18
 
-
 - lotus_devnet_genesis.car
   - Source: https://github.com/filecoin-project/lotus/blob/v0.2.10/build/genesis/devnet.car
 
 - lotus_testnet_export_128.car
   - Export of the first 128 block of the testnet chain, exported from Lotus by @traviperson on 2019-03-24
-
 
 - lotus_devnet_genesis_shuffled_noroots.car
 - lotus_testnet_export_128_shuffled_noroots.car

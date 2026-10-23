@@ -4,18 +4,18 @@ name: CodeQL
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ master ]
+    branches: [master]
     paths-ignore:
-      - '**/*.md'
+      - "**/*.md"
   schedule:
-    - cron: '30 12 * * 2'
+    - cron: "30 12 * * 2"
 
 permissions:
-  contents: read  #  to fetch code (actions/checkout)
-  security-events: write  #   (github/codeql-action/autobuild)
+  contents: read #  to fetch code (actions/checkout)
+  security-events: write #   (github/codeql-action/autobuild)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
@@ -28,22 +28,22 @@ jobs:
     timeout-minutes: 20
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-    - name: Setup Go
-      uses: actions/setup-go@v7
-      with:
-        go-version-file: 'go.mod'
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: "go.mod"
 
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
-      with:
-        languages: go
+      # Initializes the CodeQL tools for scanning.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v4
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4

@@ -3,14 +3,14 @@ name: Sync GitHub Release Assets
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
 concurrency:
   group: release-assets-dist-sync
   cancel-in-progress: true
 
 permissions:
-  contents: write  #  to upload release asset
+  contents: write #  to upload release asset
 
 jobs:
   dist-ipfs-tech:

@@ -10,14 +10,15 @@ on:
       - labeled
       - unlabeled
     paths:
-      - '**.go'
-      - '**/go.mod'
-      - '**/go.sum'
+      - "**.go"
+      - "**/go.mod"
+      - "**/go.sum"
 
 jobs:
   changelog:
-    if: contains(github.event.pull_request.title, '[skip changelog]') == false &&
-        contains(github.event.pull_request.labels.*.name, 'skip/changelog') == false
+    if:
+      contains(github.event.pull_request.title, '[skip changelog]') == false &&
+      contains(github.event.pull_request.labels.*.name, 'skip/changelog') == false
     runs-on: ubuntu-latest
     name: Changelog
     steps:

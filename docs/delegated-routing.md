@@ -7,7 +7,7 @@
 >
 > The rest of this documentation describes experimental features intended only for researchers and advanced users.
 
-----
+---
 
 # Custom Multi-Router Configuration (Experimental)
 
@@ -34,7 +34,7 @@ The actual routing implementation is not enough. Some users need to have more op
 
 - [x] Be user-friendly and easy enough to configure, but also versatile
 - [x] Configurable Router execution order
-     - [x] Delay some of the Router methods execution when they will be executed on parallel
+  - [x] Delay some of the Router methods execution when they will be executed on parallel
 - [x] Configure which method of a giving router will be used
 - [x] Mark some router methods as mandatory to make the execution fails if that method fails
 
@@ -63,6 +63,7 @@ Params:
 ##### Amino DHT
 
 Params:
+
 - `"Mode"`: Mode used by the Amino DHT. Possible values: "server", "client", "auto"
 - `"AcceleratedDHTClient"`: Set to `true` if you want to use the experimentalDHT.
 - `"PublicIPNetwork"`: Set to `true` to create a `WAN` Amino DHT. Set to `false` to create a `LAN` DHT.
@@ -70,25 +71,30 @@ Params:
 ##### Parallel
 
 Params:
+
 - `Routers`: A list of routers that will be executed in parallel:
-    - `Name:string`: Name of the router. It should be one of the previously added to `Routers` list.
-    - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)`. Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
-    - `ExecuteAfter:duration`: Providing this param will delay the execution of that router at the specified time. It accepts strings compatible with Go `time.ParseDuration(string)`.
-    - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
-- `Timeout:duration`: Global timeout.  It accepts strings compatible with Go `time.ParseDuration(string)`.
+  - `Name:string`: Name of the router. It should be one of the previously added to `Routers` list.
+  - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)`. Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
+  - `ExecuteAfter:duration`: Providing this param will delay the execution of that router at the specified time. It accepts strings compatible with Go `time.ParseDuration(string)`.
+  - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
+- `Timeout:duration`: Global timeout. It accepts strings compatible with Go `time.ParseDuration(string)`.
+
 ##### Sequential
 
 Params:
+
 - `Routers`: A list of routers that will be executed in order:
-    - `Name:string`: Name of the router. It should be one of the previously added to `Routers` list.
-    - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)`. Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
-    - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
-- `Timeout:duration`: Global timeout.  It accepts strings compatible with Go `time.ParseDuration(string)`.
+  - `Name:string`: Name of the router. It should be one of the previously added to `Routers` list.
+  - `Timeout:duration`: Local timeout. It accepts strings compatible with Go `time.ParseDuration(string)`. Time will start counting when this specific router is called, and it will stop when the router returns, or we reach the specified timeout.
+  - `IgnoreErrors:bool`: It will specify if that router should be ignored if an error occurred.
+- `Timeout:duration`: Global timeout. It accepts strings compatible with Go `time.ParseDuration(string)`.
+
 #### Methods
 
 `Methods:map` will define which routers will be executed per method. The key will be the name of the method: `"provide"`, `"find-providers"`, `"find-peers"`, `"put-ipns"`, `"get-ipns"`. All methods must be added to the list. This will make configuration discoverable giving good errors to the user if a method is missing.
 
 The value will contain:
+
 - `RouterName:string`: Name of the router. It should be one of the previously added to `Routers` list.
 
 #### Configuration file example:
@@ -210,9 +216,10 @@ The value will contain:
 ```
 
 ### Error cases
- - If any of the routers fails, the output will be an error by default.
- - You can use `IgnoreErrors:true` to ignore errors for a specific router output
- - To avoid any error at the output, you must ignore all router errors.
+
+- If any of the routers fails, the output will be an error by default.
+- You can use `IgnoreErrors:true` to ignore errors for a specific router output
+- To avoid any error at the output, you must ignore all router errors.
 
 ### Implementation Details
 
@@ -236,7 +243,7 @@ All methods involved:
 type Routing interface {
     Provide(context.Context, cid.Cid, bool) error
     FindProvidersAsync(context.Context, cid.Cid, int) <-chan peer.AddrInfo
-    
+
     FindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
 
     PutValue(context.Context, string, []byte, ...Option) error
@@ -246,6 +253,7 @@ type Routing interface {
     Bootstrap(context.Context) error
 }
 ```
+
 We can configure which methods will be used per routing implementation. Methods names used in the configuration file will be:
 
 - `Provide`: `"provide"`

@@ -17,43 +17,30 @@
           "/routing/v1/peers",
           "/routing/v1/ipns"
         ],
-        "Write": [
-          "/routing/v1/ipns"
-        ]
+        "Write": ["/routing/v1/ipns"]
       }
     },
     "IPNI": {
       "URL": "https://cid.contact",
       "Description": "Network Indexer - content routing database for large storage providers",
       "DelegatedConfig": {
-        "Read": [
-          "/routing/v1/providers"
-        ],
+        "Read": ["/routing/v1/providers"],
         "Write": []
       }
     }
   },
   "DNSResolvers": {
-    "eth.": [
-      "https://dns.eth.limo/dns-query"
-    ]
+    "eth.": ["https://dns.eth.limo/dns-query"]
   },
   "DelegatedEndpoints": {
     "https://amino-dht.example.com": {
       "Systems": ["AminoDHT"],
-      "Read": [
-        "/routing/v1/providers",
-        "/routing/v1/peers"
-      ],
-      "Write": [
-        "/routing/v1/ipns"
-      ]
+      "Read": ["/routing/v1/providers", "/routing/v1/peers"],
+      "Write": ["/routing/v1/ipns"]
     },
     "https://cid.contact": {
       "Systems": ["IPNI"],
-      "Read": [
-        "/routing/v1/providers"
-      ],
+      "Read": ["/routing/v1/providers"],
       "Write": []
     }
   }

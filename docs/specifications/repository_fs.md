@@ -1,6 +1,7 @@
 # ![](https://img.shields.io/badge/status-wip-orange.svg?style=flat-square) fs-repo
 
 **Author(s)**:
+
 - [Juan Benet](github.com/jbenet)
 - [David Dias](github.com/daviddias)
 - [Hector Sanjuan](github.com/hsanjuan)
@@ -32,7 +33,6 @@ This spec defines `fs-repo` version `1`, its formats, and semantics.
 
 `fs-repo` is a filesystem implementation of the IPFS [repo](repository.md).
 
-
 ## Contents
 
 ![](img/ipfs-repo-contents.png?)
@@ -57,6 +57,7 @@ This spec defines `fs-repo` version `1`, its formats, and semantics.
 ### api
 
 `./api` is a file that exists to denote an API endpoint to listen to.
+
 - It MAY exist even if the endpoint is no longer live (i.e. it is a _stale_ or left-over `./api` file).
 
 In the presence of an `./api` file, ipfs tools (e.g. go-ipfs `ipfs daemon`) MUST attempt to delegate to the endpoint, and MAY remove the file if reasonably certain the file is stale. (e.g. endpoint is local, but no process is live)
@@ -69,6 +70,7 @@ The `./api` file is used in conjunction with the `repo.lock`. Clients may opt to
 ```
 
 Notes:
+
 - The API server must remove the api file before releasing the `repo.lock`.
 - It is not enough to use the `config` file, as the API addr of a daemon may
   have been overridden via ENV or flag.
@@ -130,7 +132,6 @@ none
 
 ### keystore/
 
-
 The `keystore` directory holds additional private keys that the node has
 access to (the public keys can be derived from them).
 
@@ -165,8 +166,6 @@ TODO: consider whether all should just be named `leveldb/`
 IPFS implementations put event log files inside the `logs/` directory. The
 latest log file is `logs/events`. Others, rotated out may exist, with a
 timestamp of their creation. For example:
-
-
 
 ### repo.lock
 
@@ -239,6 +238,7 @@ The files are nested in directories whose names are prefixes of the hash, as
 in `.git/objects`.
 
 For example:
+
 ```sh
 # multihashes
 1220fe389b55ea958590769f9046b0f7268bca90a92e4a9f45cbb30930f4bf89269d # sha2
@@ -250,6 +250,7 @@ For example:
 ```
 
 **Important Notes:**
+
 - the hashes are encoded in hex, not the usual base58, because some
   filesystems are case insensitive.
 - the multihash prefix is two bytes, which would waste two directory levels,

@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       push:
-        description: 'Push to Docker Hub'
+        description: "Push to Docker Hub"
         required: true
-        default: 'false'
+        default: "false"
       tags:
-        description: 'Custom tags to use for the push'
+        description: "Custom tags to use for the push"
         required: false
-        default: ''
+        default: ""
   # # If we decide to build all images on every PR, we should make sure that
   # # they are NOT pushed to Docker Hub.
   # pull_request:
@@ -22,14 +22,14 @@ on:
   #     - '**/*.md'
   push:
     branches:
-      - 'master'
-      - 'staging'
-      - 'bifrost-*'
+      - "master"
+      - "staging"
+      - "bifrost-*"
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
-  contents: read  #  to fetch code (actions/checkout)
+  contents: read #  to fetch code (actions/checkout)
 
 jobs:
   docker-hub:

@@ -1,22 +1,22 @@
 ratings:
-  paths: 
-  - "**/*.go"
+  paths:
+    - "**/*.go"
 
 exclude_paths:
-- test/
-- Godeps/
-- thirdparty/
-- "**/*.pb.go"
+  - test/
+  - Godeps/
+  - thirdparty/
+  - "**/*.pb.go"
 
 engines:
   fixme:
     enabled: true
     config:
       strings:
-      - FIXME
-      - HACK
-      - XXX
-      - BUG
+        - FIXME
+        - HACK
+        - XXX
+        - BUG
   golint:
     enabled: true
   govet:
