@@ -25,6 +25,13 @@ endif
 export LIBP2P_TCP_REUSEPORT=false
 
 # -------------------- #
+#   act (GitHub Actions local runner)   #
+# -------------------- #
+ACT ?= act
+ACT_ARCH ?= linux/amd64
+ACT_EVENT ?= workflow_dispatch
+
+# -------------------- #
 #       sub-files      #
 # -------------------- #
 dir := bin
@@ -157,6 +164,49 @@ supported:
 	@grep '^  - ' .github/build-platforms.yml | sed 's/^  - //' || (echo "Error: .github/build-platforms.yml not found"; exit 1)
 .PHONY: supported
 
+# -------------------- #
+#   act targets        #
+# -------------------- #
+
+# Run a single GitHub Actions workflow file with act:
+#   make run WORKFLOW=.github/workflows/interop.yml
+#   make run .github/workflows/interop.yml
+run:
+ifdef WORKFLOW
+	$(ACT) $(ACT_EVENT) -W $(WORKFLOW) --container-architecture $(ACT_ARCH)
+else
+	@echo 'Usage: make run WORKFLOW=.github/workflows/<name>.yml'
+	@echo '       make run .github/workflows/<name>.yml'
+endif
+.PHONY: run
+
+# Run all workflows for the default (push) event.
+act:
+	$(ACT) --container-architecture $(ACT_ARCH)
+.PHONY: act
+
+# List the jobs act would run.
+act-list:
+	$(ACT) -l --container-architecture $(ACT_ARCH)
+.PHONY: act-list
+
+# Run a specific job from a workflow:
+#   make act-job WORKFLOW=.github/workflows/interop.yml JOB=interop-prep
+act-job:
+	$(ACT) $(ACT_EVENT) -W $(WORKFLOW) -j $(JOB) --container-architecture $(ACT_ARCH)
+.PHONY: act-job
+
+# Pattern rule: building any workflow file runs it through act, so a command like
+# `make .github/workflows/interop.yml` (or `make run .github/workflows/interop.yml`)
+# executes that workflow locally.
+.github/workflows/%.yml: FORCE
+	$(ACT) $(ACT_EVENT) -W $@ --container-architecture $(ACT_ARCH)
+.github/workflows/%.yaml: FORCE
+	$(ACT) $(ACT_EVENT) -W $@ --container-architecture $(ACT_ARCH)
+
+FORCE:
+.PHONY: FORCE
+
 help:
 	@echo 'DEPENDENCY TARGETS:'
 	@echo ''
@@ -203,5 +253,12 @@ help:
 	@echo '  coverage             - Collect coverage info from unit tests and sharness'
 	@echo '  test_rust_ffi        - Run Rust FFI integration tests'
 	@echo '  test_swift_ffi       - Run Swift FFI tests'
+	@echo
+	@echo 'ACT (GITHUB ACTIONS) TARGETS:'
+	@echo ''
+	@echo '  run                  - Run a workflow with act (WORKFLOW=... or positional .yml)'
+	@echo '  act                  - Run all workflows for the default (push) event'
+	@echo '  act-list             - List the jobs act would run'
+	@echo '  act-job              - Run one job (WORKFLOW=... JOB=...)'
 	@echo
 .PHONY: help
