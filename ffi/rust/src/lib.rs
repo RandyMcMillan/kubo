@@ -42,6 +42,16 @@ extern "C" {
         out_len: *mut usize,
     ) -> i64;
 
+    // blocks (low-level DAG construction, e.g. custom directories)
+    fn kubo_block_put(handle: u64, data: *const u8, length: usize) -> *mut c_char;
+    fn kubo_block_get(
+        handle: u64,
+        cid_str: *const c_char,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+    ) -> i64;
+    fn kubo_block_stat(handle: u64, cid_str: *const c_char) -> i64;
+
     // commands (full coverage)
     fn kubo_run_command_line(repo_path: *const c_char, line: *const c_char) -> *mut c_char;
     fn kubo_run_command_on_node(
@@ -310,6 +320,41 @@ impl Node {
         let bytes = unsafe { slice::from_raw_parts(out, out_len).to_vec() };
         unsafe { kubo_ffi_free_buffer(out) };
         Ok(bytes)
+    }
+
+    // ---- blocks (low-level DAG construction) ----
+
+    /// Store a raw IPLD block and return its CID.
+    pub fn block_put(&self, data: &[u8]) -> Result<String, String> {
+        let p = unsafe { kubo_block_put(self.0, data.as_ptr(), data.len()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "block put failed".into()))
+    }
+
+    /// Fetch a raw IPLD block by CID.
+    pub fn block_get(&self, cid: &str) -> Result<Vec<u8>, String> {
+        let c = cstr(cid)?;
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        let rc = unsafe { kubo_block_get(self.0, c.as_ptr(), &mut out, &mut out_len) };
+        if rc != 0 {
+            return Err(last_error().unwrap_or_else(|| "block get failed".into()));
+        }
+        if out.is_null() || out_len == 0 {
+            return Ok(Vec::new());
+        }
+        let bytes = unsafe { slice::from_raw_parts(out, out_len).to_vec() };
+        unsafe { kubo_ffi_free_buffer(out) };
+        Ok(bytes)
+    }
+
+    /// Return the size of a raw IPLD block, or an error if it is not available.
+    pub fn block_stat(&self, cid: &str) -> Result<i64, String> {
+        let c = cstr(cid)?;
+        let size = unsafe { kubo_block_stat(self.0, c.as_ptr()) };
+        if size < 0 {
+            return Err(last_error().unwrap_or_else(|| "block stat failed".into()));
+        }
+        Ok(size)
     }
 
     // ---- commands (full coverage) ----
