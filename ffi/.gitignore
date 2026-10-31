@@ -2,3 +2,8 @@ tmp/
 ffi
 cmd/testffi/testffi
 cmd/testrust/testrust
+
+libkuboffi.a
+libkuboffi.h
+*.a
+*.h
