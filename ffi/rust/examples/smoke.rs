@@ -1,6 +1,5 @@
 // Smoke test: publish a file, fetch it on a second node, serve a registry over HTTP.
 use kubo_ffi::Node;
-use std::fs;
 
 fn main() {
     let base = std::env::args()
