@@ -7,7 +7,7 @@ use kubo_ffi::{self, Node};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Text};
+use ratatui::text::Text;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Terminal;
 use std::io::stdout;
@@ -24,6 +24,7 @@ fn main() -> std::io::Result<()> {
     let repo = dir.to_string_lossy().to_string();
 
     let mut status = String::from("Initializing repo...");
+	println!("Node status: {}", status);
     let _ = kubo_ffi::init_repo(&repo);
     let node = match Node::start(&repo, true) {
         Ok(n) => {
