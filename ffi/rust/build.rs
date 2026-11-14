@@ -139,11 +139,13 @@ fn main() {
     println!("cargo:rustc-link-lib=pthread");
     println!("cargo:rustc-link-lib=dylib=dl");
 
-    // The WebUI CAR (29MB) is gitignored; examples that embed it get it
-    // fetched once from the canonical release asset and sha256-verified.
-    // Set KUBO_FFI_SKIP_WEBUI_ASSET=1 to skip (offline builds, CI that
-    // never builds the web example).
-    ensure_webui_asset(&manifest_dir);
+    // The WebUI CAR (29MB, gitignored) is embedded ONLY by examples. It is
+    // cached in OUT_DIR (never the source tree — `cargo package` verify
+    // rejects source modifications) and exposed to them via an env var.
+    // Skipped (placeholder written, examples fail with a clear message at
+    // runtime) when: docs.rs (no network), KUBO_FFI_SKIP_WEBUI_ASSET=1, or
+    // the download/verification fails (offline builds).
+    ensure_webui_asset(&out_dir);
 }
 
 const WEBUI_CAR_URL: &str =
@@ -152,30 +154,45 @@ const WEBUI_CAR_SHA256: &str =
     "0f26ce282643f26fc699451f3b71bcac6bacdd96c052612406337d69e8a5e55b";
 const WEBUI_CAR_NAME: &str = "ipfs-webui-v4.13.0.car";
 
-fn ensure_webui_asset(manifest_dir: &std::path::Path) {
-    if env::var("KUBO_FFI_SKIP_WEBUI_ASSET").is_ok() {
-        return;
-    }
-    let path = manifest_dir.join("assets").join(WEBUI_CAR_NAME);
+fn ensure_webui_asset(out_dir: &std::path::Path) {
+    let dir = out_dir.join("kubo-ffi-webui");
+    let path = dir.join(WEBUI_CAR_NAME);
     println!("cargo:rerun-if-changed={}", path.display());
-    if path.exists() {
-        return;
+
+    let have_car = path.exists() && std::fs::metadata(&path).map(|m| m.len() > 0).unwrap_or(false);
+    if !have_car
+        && env::var("DOCS_RS").is_err()
+        && env::var("KUBO_FFI_SKIP_WEBUI_ASSET").is_err()
+    {
+        std::fs::create_dir_all(&dir).expect("webui asset dir");
+        eprintln!("kubo-ffi: fetching WebUI CAR from {WEBUI_CAR_URL}");
+        let tmp = path.with_extension("car.download");
+        let ok = Command::new("curl")
+            .args(["-sSfL", "--retry", "3", WEBUI_CAR_URL, "-o"])
+            .arg(&tmp)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if ok {
+            let digest = sha256_hex(&std::fs::read(&tmp).expect("read downloaded CAR"));
+            if digest == WEBUI_CAR_SHA256 {
+                std::fs::rename(&tmp, &path).expect("move CAR into place");
+            } else {
+                eprintln!("kubo-ffi: WebUI CAR sha256 mismatch ({digest}), continuing without it");
+                let _ = std::fs::remove_file(&tmp);
+            }
+        } else {
+            eprintln!("kubo-ffi: WebUI CAR download failed; examples can fetch it later via assets/build-webui-car.sh");
+            let _ = std::fs::remove_file(&tmp);
+        }
     }
-    eprintln!("kubo-ffi: fetching WebUI CAR from {WEBUI_CAR_URL}");
-    let tmp = path.with_extension("car.download");
-    let status = Command::new("curl")
-        .args(["-sSfL", "--retry", "3", WEBUI_CAR_URL, "-o"])
-        .arg(&tmp)
-        .status()
-        .expect("failed to run curl; install it or set KUBO_FFI_SKIP_WEBUI_ASSET=1");
-    assert!(status.success(), "curl download of WebUI CAR failed");
-    let digest = sha256_hex(&std::fs::read(&tmp).expect("read downloaded CAR"));
-    assert_eq!(
-        digest, WEBUI_CAR_SHA256,
-        "WebUI CAR sha256 mismatch: got {digest}, want {WEBUI_CAR_SHA256}"
-    );
-    std::fs::rename(&tmp, &path).expect("move CAR into place");
-    eprintln!("kubo-ffi: WebUI CAR verified and placed at {}", path.display());
+    if !path.exists() {
+        // Placeholder so examples always compile; they error clearly at
+        // runtime if actually run without the real CAR.
+        std::fs::create_dir_all(&dir).expect("webui asset dir");
+        std::fs::write(&path, []).expect("placeholder CAR");
+    }
+    println!("cargo:rustc-env=KUBO_FFI_WEBUI_CAR={}", path.display());
 }
 
 /// Minimal SHA-256 (FIPS 180-4) so the build script needs no dependencies.
