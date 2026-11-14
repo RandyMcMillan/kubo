@@ -107,7 +107,18 @@ fn main() {
         std::process::exit(1);
     }
 
-    let api = match node.start_api("/ip4/127.0.0.1/tcp/0") {
+    // Bind the API to 127.0.0.1:5001 when free: that is the address the
+    // WebUI connects to by default (kubo-rpc-client default), so the WebUI
+    // works with zero configuration. Fall back to an ephemeral port and
+    // print the custom API address the user must then set in the WebUI.
+    let mut api = node.start_api("/ip4/127.0.0.1/tcp/5001");
+    let mut api_is_default = true;
+    if api.is_none() {
+        kubo_ffi::last_error();
+        api = node.start_api("/ip4/127.0.0.1/tcp/0");
+        api_is_default = false;
+    }
+    let api = match api {
         Some(u) => u,
         None => {
             eprintln!("start_api failed: {:?}", kubo_ffi::last_error());
@@ -129,6 +140,15 @@ fn main() {
         println!("WebUI (API redirect):  http://{}:{}/webui", ah, ap);
     }
     println!("WebUI (gateway direct): http://{}:{}/ipfs/{}/", gh, gp, root);
+    if !api_is_default {
+        println!();
+        println!("port 5001 was busy; the WebUI cannot auto-connect.");
+        println!("In the WebUI's connection screen, set the API address to:");
+        println!("  /ip4/{}/tcp/{}/http", ah, ap);
+    } else {
+        println!();
+        println!("The WebUI connects to this node automatically (default API localhost:5001).");
+    }
     println!("Press Ctrl-C to stop.");
     loop {
         thread::sleep(Duration::from_secs(1));
