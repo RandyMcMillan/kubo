@@ -192,6 +192,17 @@ extern "C" {
     fn kubo_routing_find_peer(handle: u64, peer_id: *const c_char) -> *mut c_char;
     fn kubo_routing_find_providers(handle: u64, path_str: *const c_char) -> *mut c_char;
     fn kubo_routing_provide(handle: u64, path_str: *const c_char) -> i64;
+
+    // operations (Batch F)
+    fn kubo_repo_stat(handle: u64) -> *mut c_char;
+    fn kubo_repo_gc(handle: u64) -> i64;
+    fn kubo_bootstrap_list(handle: u64) -> *mut c_char;
+    fn kubo_bootstrap_add(handle: u64, multiaddr: *const c_char) -> i64;
+    fn kubo_bootstrap_rm(handle: u64, multiaddr: *const c_char) -> i64;
+    fn kubo_stats_bw(handle: u64) -> *mut c_char;
+    fn kubo_config_get(handle: u64) -> *mut c_char;
+    fn kubo_config_set(handle: u64, key: *const c_char, value_json: *const c_char) -> i64;
+    fn kubo_node_shutdown(handle: u64) -> i64;
 }
 
 // ---------------------------------------------------------------------------
@@ -1292,6 +1303,91 @@ impl Node {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Operations (Batch F)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Repository statistics as JSON {storage_usage_bytes}.
+    pub fn repo_stat(&self) -> Result<String, String> {
+        let p = unsafe { kubo_repo_stat(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "repo stat failed".into()))
+    }
+
+    /// Run garbage collection over unpinned blocks.
+    pub fn repo_gc(&self) -> Result<(), String> {
+        let rc = unsafe { kubo_repo_gc(self.0) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "repo gc failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Configured bootstrap multiaddrs as a JSON array.
+    pub fn bootstrap_list(&self) -> Result<String, String> {
+        let p = unsafe { kubo_bootstrap_list(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "bootstrap list failed".into()))
+    }
+
+    /// Add a bootstrap multiaddr (persisted to config).
+    pub fn bootstrap_add(&self, multiaddr: &str) -> Result<(), String> {
+        let a = cstr(multiaddr)?;
+        let rc = unsafe { kubo_bootstrap_add(self.0, a.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "bootstrap add failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Remove a bootstrap multiaddr (persisted to config).
+    pub fn bootstrap_rm(&self, multiaddr: &str) -> Result<(), String> {
+        let a = cstr(multiaddr)?;
+        let rc = unsafe { kubo_bootstrap_rm(self.0, a.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "bootstrap rm failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Bandwidth totals as JSON {total_in, total_out, rate_in, rate_out}.
+    pub fn stats_bw(&self) -> Result<String, String> {
+        let p = unsafe { kubo_stats_bw(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "stats bw failed".into()))
+    }
+
+    /// The node's full config as JSON.
+    pub fn config_get(&self) -> Result<String, String> {
+        let p = unsafe { kubo_config_get(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "config get failed".into()))
+    }
+
+    /// Set a dotted config key to a JSON value (persisted to the repo).
+    pub fn config_set(&self, key: &str, value_json: &str) -> Result<(), String> {
+        let k = cstr(key)?;
+        let v = cstr(value_json)?;
+        let rc = unsafe { kubo_config_set(self.0, k.as_ptr(), v.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "config set failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Gracefully shut the node down and release the handle.
+    pub fn shutdown(self) -> Result<(), String> {
+        let rc = unsafe { kubo_node_shutdown(self.0) };
+        std::mem::forget(self);
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "node shutdown failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1299,6 +1395,147 @@ mod tests {
     #[test]
     fn version_works() {
         assert!(!version().is_empty());
+    }
+
+    /// Compile-time exposure matrix: referencing every public symbol by
+    /// name means this test FAILS TO COMPILE if any wrapper is removed or
+    /// renamed — "entire FFI exposed" becomes a build-enforced fact.
+    #[test]
+    fn exposure_matrix() {
+        // free functions
+        let _: fn(&str) -> Result<(), String> = init_repo;
+        let _: fn(&str) -> Result<(), String> = init_repo_networked;
+        let _: fn(&str, &str) -> Result<(), String> = init_repo_with_config;
+        let _: fn() -> String = version;
+        let _: fn() -> String = get_logs;
+        let _: fn() -> Option<String> = last_error;
+        let _: fn(&str, &str) -> Result<(), String> = git_push;
+        let _: fn(&str) -> Result<String, String> = nostr_nsec_to_swarm_key;
+        let _: fn() -> Result<String, String> = swarm_key_generate;
+        let _: fn(&str) -> Result<(), String> = nostr_event_verify;
+        let _: fn(&str) -> Result<String, String> = nip19_encode_pubkey;
+        let _: fn(&str) -> Result<String, String> = nip19_decode_pubkey;
+        let _: fn(&str) -> Result<String, String> = nip19_encode_seckey;
+        let _: fn(&str) -> Result<String, String> = nip19_decode_seckey;
+        let _: fn(&str) -> Result<String, String> = nip19_encode_note;
+        let _: fn(&str) -> Result<String, String> = nip19_decode_note;
+        let _: fn(&str, i32, &str, &str) -> Result<String, String> = nip19_encode_entity;
+        let _: fn(&str) -> Result<String, String> = nip19_decode_entity;
+        let _: fn(&str, &str) -> Result<(), String> = nip05_verify;
+        let _: fn(&str) -> Result<String, String> = nip05_query;
+
+        // Node methods: lifecycle + info
+        let _: fn(&str, bool) -> Result<Node, String> = Node::start;
+        let _: fn(&Node) -> Option<String> = Node::peer_id;
+        let _: fn(&Node) -> Option<String> = Node::id;
+        let _: fn(&Node) -> Option<String> = Node::listening_addrs;
+        let _: fn(&Node) -> Option<String> = Node::api_addrs;
+        let _: fn(&Node) = Node::stop;
+
+        // serving
+        let _: fn(&Node, &str) -> Option<String> = Node::start_api;
+        let _: fn(&Node, &str) -> Option<String> = Node::start_gateway;
+        let _: fn(&Node, &str, &str) -> bool = Node::add_static;
+        let _: fn(&Node, &str) -> bool = Node::add_crate_redirect;
+        let _: fn(&Node, &str) -> bool = Node::set_auth_token;
+
+        // swarm
+        let _: fn(&Node, &str) -> bool = Node::connect;
+        let _: fn(&Node) -> Vec<String> = Node::swarm_peers;
+        let _: fn(&Node, &str) -> Result<(), String> = Node::swarm_disconnect;
+        let _: fn(&Node) -> Result<String, String> = Node::swarm_local_addrs;
+        let _: fn(&Node) -> Result<String, String> = Node::swarm_listen_addrs;
+        let _: fn(&Node) -> Result<String, String> = Node::swarm_known_addrs;
+
+        // unixfs + blocks
+        let _: fn(&Node, &[u8]) -> Result<String, String> = Node::unixfs_add_bytes;
+        let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::unixfs_cat;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::unixfs_ls;
+        let _: fn(&Node, &[u8]) -> Result<String, String> = Node::block_put;
+        let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::block_get;
+        let _: fn(&Node, &str) -> Result<i64, String> = Node::block_stat;
+
+        // pin + dag
+        let _: fn(&Node, &str) -> Result<(), String> = Node::pin_add;
+        let _: fn(&Node, &str) -> Result<(), String> = Node::pin_rm;
+        let _: fn(&Node) -> Result<String, String> = Node::pin_ls;
+        let _: fn(&Node, &str) -> Result<bool, String> = Node::pin_is_pinned;
+        let _: fn(&Node, &str, &str) -> Result<(), String> = Node::pin_update;
+        let _: fn(&Node) -> Result<String, String> = Node::pin_verify;
+        let _: fn(&Node, &[u8]) -> Result<String, String> = Node::dag_import;
+
+        // IPNS + keys
+        let _: fn(&Node, &str) -> Result<String, String> = Node::name_publish;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::name_resolve;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::name_search;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::key_generate;
+        let _: fn(&Node) -> Result<String, String> = Node::key_list;
+        let _: fn(&Node) -> Result<String, String> = Node::key_self;
+        let _: fn(&Node, &str, &str) -> Result<String, String> = Node::key_rename;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::key_remove;
+
+        // objects
+        let _: fn(&Node, &str, &str, &str) -> Result<String, String> = Node::object_add_link;
+        let _: fn(&Node, &str, &str) -> Result<String, String> = Node::object_rm_link;
+        let _: fn(&Node, &str, &str) -> Result<String, String> = Node::object_diff;
+
+        // pubsub + routing
+        let _: fn(&Node, &str, &[u8]) -> Result<(), String> = Node::pubsub_publish;
+        let _: fn(&Node) -> Result<String, String> = Node::pubsub_ls;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::pubsub_peers;
+        let _: fn(&Node, &str) -> Result<u64, String> = Node::pubsub_subscribe;
+        let _: fn(u64) -> Result<String, String> = Node::pubsub_next;
+        let _: fn(u64) -> Result<(), String> = Node::pubsub_unsubscribe;
+        let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::routing_get;
+        let _: fn(&Node, &str, &[u8]) -> Result<(), String> = Node::routing_put;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::routing_find_peer;
+        let _: fn(&Node, &str) -> Result<String, String> = Node::routing_find_providers;
+        let _: fn(&Node, &str) -> Result<(), String> = Node::routing_provide;
+
+        // operations
+        let _: fn(&Node) -> Result<String, String> = Node::repo_stat;
+        let _: fn(&Node) -> Result<(), String> = Node::repo_gc;
+        let _: fn(&Node) -> Result<String, String> = Node::bootstrap_list;
+        let _: fn(&Node, &str) -> Result<(), String> = Node::bootstrap_add;
+        let _: fn(&Node, &str) -> Result<(), String> = Node::bootstrap_rm;
+        let _: fn(&Node) -> Result<String, String> = Node::stats_bw;
+        let _: fn(&Node) -> Result<String, String> = Node::config_get;
+        let _: fn(&Node, &str, &str) -> Result<(), String> = Node::config_set;
+        let _: fn(Node) -> Result<(), String> = Node::shutdown;
+
+        // GitRepo
+        let _: fn(&str, &str, bool) -> Result<(), String> = GitRepo::clone;
+        let _: fn(&str, bool) -> Result<(), String> = GitRepo::init;
+        let _: fn(&str) -> Result<GitRepo, String> = GitRepo::open;
+        let _: fn(&GitRepo) -> Option<String> = GitRepo::head;
+        let _: fn(&GitRepo) -> bool = GitRepo::is_bare;
+        let _: fn(&GitRepo) -> Option<String> = GitRepo::branches;
+        let _: fn(&GitRepo) -> Option<String> = GitRepo::remotes;
+        let _: fn(&GitRepo, &str, &str) -> Result<(), String> = GitRepo::create_branch;
+        let _: fn(&GitRepo, &str) -> Result<String, String> = GitRepo::commit_lookup;
+        let _: fn(&GitRepo, &str) -> Result<String, String> = GitRepo::tree_entries;
+        let _: fn(&GitRepo, &str) -> Result<Vec<u8>, String> = GitRepo::blob_read;
+        let _: fn(&GitRepo) -> Result<String, String> = GitRepo::status;
+        let _: fn(&GitRepo, &str, &str) -> Result<String, String> = GitRepo::diff_trees;
+
+        // watch + nostr relay + misc
+        let _: fn(&str, &str) -> Result<WatchHandle, String> = WatchHandle::start;
+        let _: fn(&WatchHandle) -> Result<(), String> = WatchHandle::stop;
+        let _: fn(&str) -> Result<(), String> = git_fetch_all;
+        let _: fn(&str, &str) -> Result<String, String> = git_blame;
+        let _: fn(&str, i32) -> Result<String, String> = git_log;
+        let _: fn(&str) -> Result<String, String> = git_tags;
+        let _: fn() -> Result<String, String> = nostr_generate_key;
+        let _: fn(&str) -> Result<String, String> = nostr_get_public_key;
+        let _: fn(&str, &str, i32) -> Result<String, String> = nostr_event_sign;
+        let _: fn(&str, &str, i32, &str) -> Result<String, String> = nostr_event_sign_with_tags;
+        let _: fn(&str) -> Result<NostrRelay, String> = NostrRelay::connect;
+        let _: fn(&NostrRelay, &str) -> Result<(), String> = NostrRelay::publish;
+        let _: fn(&NostrRelay, &str) -> Result<NostrRelaySub, String> = NostrRelay::subscribe;
+        let _: fn(&NostrRelay) = NostrRelay::close;
+        let _: fn(&NostrRelaySub) -> Option<String> = NostrRelaySub::drain;
+        let _: fn(&NostrRelaySub) -> Result<(), String> = NostrRelaySub::unsubscribe;
+        let _: fn(&str, &str) -> Result<String, String> = run_command;
     }
 
     #[test]
