@@ -35,6 +35,12 @@ extern "C" {
 
     // content
     fn kubo_unixfs_add_bytes(handle: u64, data: *const u8, length: usize) -> *mut c_char;
+    fn kubo_unixfs_add_path(
+        handle: u64,
+        path: *const c_char,
+        opts_json: *const c_char,
+    ) -> *mut c_char;
+    fn kubo_block_rm(handle: u64, cid: *const c_char, force: u8) -> i64;
     fn kubo_unixfs_cat(
         handle: u64,
         cid_str: *const c_char,
@@ -433,6 +439,29 @@ impl Node {
     pub fn unixfs_add_bytes(&self, data: &[u8]) -> Result<String, String> {
         let p = unsafe { kubo_unixfs_add_bytes(self.0, data.as_ptr(), data.len()) };
         from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "add failed".into()))
+    }
+
+    /// Adds a file or directory from the filesystem — the full `ipfs add`
+    /// (chunker, layout, cid_version, pin, raw_leaves, only_hash, nocopy,
+    /// inline, preserve_mode, preserve_mtime, wrap). `opts_json` is a JSON
+    /// object; pass `"{}"` for defaults (CIDv1? see kubo defaults: legacy
+    /// CIDv0/dag-pb unless cid_version is set).
+    pub fn unixfs_add_path(&self, path: &str, opts_json: &str) -> Result<String, String> {
+        let p = cstr(path)?;
+        let o = cstr(opts_json)?;
+        let r = unsafe { kubo_unixfs_add_path(self.0, p.as_ptr(), o.as_ptr()) };
+        from_cstr(r).ok_or_else(|| last_error().unwrap_or_else(|| "add path failed".into()))
+    }
+
+    /// Removes a block. `force` removes even if pinned — destructive.
+    pub fn block_rm(&self, cid: &str, force: bool) -> Result<(), String> {
+        let c = cstr(cid)?;
+        let rc = unsafe { kubo_block_rm(self.0, c.as_ptr(), force as u8) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "block rm failed".into()))
+        } else {
+            Ok(())
+        }
     }
 
     /// Fetches the bytes for a CID. Returns the raw bytes (binary-safe).
@@ -1577,6 +1606,8 @@ mod tests {
 
         // unixfs + blocks
         let _: fn(&Node, &[u8]) -> Result<String, String> = Node::unixfs_add_bytes;
+        let _: fn(&Node, &str, &str) -> Result<String, String> = Node::unixfs_add_path;
+        let _: fn(&Node, &str, bool) -> Result<(), String> = Node::block_rm;
         let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::unixfs_cat;
         let _: fn(&Node, &str) -> Result<String, String> = Node::unixfs_ls;
         let _: fn(&Node, &[u8]) -> Result<String, String> = Node::block_put;
