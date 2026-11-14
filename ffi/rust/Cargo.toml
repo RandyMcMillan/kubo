@@ -6,11 +6,12 @@ description = "Safe Rust bindings to the Kubo C FFI layer"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+
+[build-dependencies]
 # Core library has no heavy dependencies.
 
 [dev-dependencies]
-ratatui = "0.30"
 crossterm = "0.29"
+ratatui = "0.30"
 
-[build-dependencies]
 # build.rs invokes `go build` to produce libkubo_ffi.a
