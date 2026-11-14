@@ -2,8 +2,6 @@ module github.com/ipfs/kubo/ffi
 
 go 1.26.5
 
-replace github.com/ipfs/kubo => ./..
-
 require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-git/go-git/v5 v5.0.0
@@ -11,7 +9,8 @@ require (
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-ipfs-cmds v0.16.1
 	github.com/ipfs/go-log/v2 v2.9.2
-	github.com/ipfs/kubo v0.0.0-00010101000000-000000000000
+	github.com/ipfs/kubo v0.43.1
+	github.com/ipld/go-car/v2 v2.17.0
 	github.com/libp2p/go-libp2p v0.49.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/nbd-wtf/go-nostr v0.52.3
@@ -126,7 +125,6 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.1.0 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.3 // indirect
 	github.com/ipfs/go-unixfsnode v1.10.6 // indirect
-	github.com/ipld/go-car/v2 v2.17.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
 	github.com/ipld/go-ipld-prime v0.24.0 // indirect
 	github.com/ipshipyard/p2p-forge v0.10.1 // indirect
