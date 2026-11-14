@@ -29,7 +29,16 @@ fn host_port(multiaddr: &str) -> (String, String) {
 
 fn main() {
     println!("Kubo version: {}", kubo_ffi::version());
-    let dir = std::env::temp_dir().join("kubo-rust-web");
+    // Unique repo per run: a fixed path lets two concurrent runs delete
+    // and re-init each other's repo mid-flight.
+    let dir = std::env::temp_dir().join(format!(
+        "kubo-rust-web-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
     let _ = std::fs::remove_dir_all(&dir);
     let repo = dir.to_string_lossy().to_string();
     if let Err(e) = kubo_ffi::init_repo(&repo) {
@@ -85,6 +94,17 @@ fn main() {
     }
     if let Ok(entries) = node.unixfs_ls(&root) {
         println!("webui entries: {}", entries.chars().take(200).collect::<String>());
+    }
+
+    // Permissive CORS so browser WebUIs can reach this ephemeral node:
+    // any http(s) origin may call the API. Safe for a throwaway local
+    // example node; do NOT copy onto a real daemon.
+    if let Err(e) = node.config_set(
+        "API.HTTPHeaders",
+        r#"{"Access-Control-Allow-Origin":["*"],"Access-Control-Allow-Methods":["PUT","POST","GET"]}"#,
+    ) {
+        eprintln!("cors config failed: {}", e);
+        std::process::exit(1);
     }
 
     let api = match node.start_api("/ip4/127.0.0.1/tcp/0") {
