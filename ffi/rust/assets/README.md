@@ -12,7 +12,10 @@ no network fetch on first `/webui` load.
   matches this Kubo's `core/corehttp.WebUIPath` (v4.13.0). Per upstream
   policy this CAR is the canonical copy of the WebUI.
 - The CAR is gitignored (29MB). `build.rs` fetches it automatically on
-  first build (sha256-verified); `KUBO_FFI_SKIP_WEBUI_ASSET=1` skips that.
+  first build (sha256-verified) into `OUT_DIR` and exposes it to examples
+  as `KUBO_FFI_WEBUI_CAR`; a missing/skipped download compiles a placeholder
+  and the example explains how to supply the file at runtime.
+  `KUBO_FFI_SKIP_WEBUI_ASSET=1` skips the fetch (offline/CI).
 
 ## Build from source
 

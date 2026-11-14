@@ -2,12 +2,13 @@ use kubo_ffi::{self, Node};
 use std::thread;
 use std::time::Duration;
 
-/// WebUI CAR built from the `webui` submodule by
-/// `assets/build-webui-car.sh` (recipe pinned to upstream CI: node 24.11.0,
-/// `REACT_APP_GIT_REV=c51d9809`, `ipfs add --cid-version 1 -r build`).
-/// When the built root matches Kubo's hardcoded `core/corehttp.WebUIPath`,
-/// the API `/webui` redirect resolves to it.
-const WEBUI_CAR: &[u8] = include_bytes!("../assets/ipfs-webui-v4.13.0.car");
+/// WebUI CAR, cached by build.rs in OUT_DIR (see build.rs; fetch can be
+/// skipped with KUBO_FFI_SKIP_WEBUI_ASSET=1, e.g. offline builds). Built
+/// from the `webui` submodule by `assets/build-webui-car.sh` (recipe pinned
+/// to upstream CI: node 24.11.0, `REACT_APP_GIT_REV=d87d88b`,
+/// `ipfs add --cid-version 1 -r build`). When the built root matches Kubo's
+/// hardcoded `core/corehttp.WebUIPath`, the API `/webui` redirect resolves.
+const WEBUI_CAR: &[u8] = include_bytes!(env!("KUBO_FFI_WEBUI_CAR"));
 /// Kubo 0.43's hardcoded WebUI root (v4.13.0).
 const KUBO_WEBUI_ROOT: &str = "bafybeiciqeyipumpmhxzlxnbqdbbv6u5uij4hy4wax64dmj7kvrhusiq6y";
 
@@ -29,6 +30,14 @@ fn host_port(multiaddr: &str) -> (String, String) {
 
 fn main() {
     println!("Kubo version: {}", kubo_ffi::version());
+    if WEBUI_CAR.is_empty() {
+        eprintln!("WebUI CAR not available (offline or skipped build).");
+        eprintln!("Fetch it once, then set KUBO_FFI_WEBUI_CAR to its path:");
+        eprintln!("  curl -sSfL -o ipfs-webui-v4.13.0.car \\");
+        eprintln!("    https://github.com/ipfs/ipfs-webui/releases/download/v4.13.0/ipfs-webui%40v4.13.0.car");
+        eprintln!("  KUBO_FFI_WEBUI_CAR=$PWD/ipfs-webui-v4.13.0.car cargo run --example web");
+        std::process::exit(1);
+    }
     // Unique repo per run: a fixed path lets two concurrent runs delete
     // and re-init each other's repo mid-flight.
     let dir = std::env::temp_dir().join(format!(
