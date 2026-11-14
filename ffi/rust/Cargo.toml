@@ -6,6 +6,14 @@ description = "Safe Rust bindings to the Kubo C FFI layer"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/gnostr-org/ipfs"
 
+[features]
+# Embeds the WebUI CAR (fetched by build.rs, see KUBO_FFI_SKIP_WEBUI_ASSET)
+# and exposes kubo_ffi::web — a self-contained WebUI server.
+web = []
+
+[[example]]
+name = "web"
+
 [dependencies]
 
 [build-dependencies]

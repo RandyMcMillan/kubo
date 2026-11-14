@@ -48,7 +48,6 @@ fn main() {
             .map(|d| d.as_millis())
             .unwrap_or(0)
     ));
-    let _ = std::fs::remove_dir_all(&dir);
     let repo = dir.to_string_lossy().to_string();
     if let Err(e) = kubo_ffi::init_repo_networked(&repo) {
         eprintln!("init failed: {}", e);
@@ -134,11 +133,11 @@ fn main() {
             std::process::exit(1);
         }
     };
+
     // Serve a one-shot setup shim from the gateway origin: it writes the
     // node's API multiaddr into the WebUI's localStorage ('ipfsApi' is the
-    // only place the WebUI looks) and loads the WebUI. After one visit the
-    // gateway-hosted WebUI connects with no manual configuration. The Kubo
-    // RPC API itself cannot do this — localStorage is browser state.
+    // only place the WebUI looks) and loads the WebUI. The Kubo RPC API
+    // itself cannot do this — localStorage is browser state.
     let shim_dir = std::env::temp_dir().join(format!("kubo-webui-shim-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&shim_dir);
     std::fs::create_dir_all(&shim_dir).expect("shim dir");
