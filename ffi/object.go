@@ -9,6 +9,8 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/ipfs/boxo/path"
 )
 
 //export kubo_object_add_link
@@ -62,6 +64,18 @@ func kubo_object_rm_link(handle uint64, base *C.char, link *C.char) *C.char {
 	return C.CString(updated.String())
 }
 
+// immutablePathString renders a boxo path.ImmutablePath, mapping the zero
+// value (present in object diff add/remove entries) to "" instead of
+// panicking on its nil inner path.
+func immutablePathString(p path.ImmutablePath) (s string) {
+	defer func() {
+		if recover() != nil {
+			s = ""
+		}
+	}()
+	return p.String()
+}
+
 //export kubo_object_diff
 func kubo_object_diff(handle uint64, base *C.char, target *C.char) *C.char {
 	nodesMu.RLock()
@@ -95,11 +109,11 @@ func kubo_object_diff(handle uint64, base *C.char, target *C.char) *C.char {
 	out := make([]change, 0, len(changes))
 	for _, c := range changes {
 		entry := change{Type: int(c.Type), Path: c.Path}
-		if c.Before.String() != "" && c.Before.String() != "/" {
-			entry.Before = c.Before.String()
+		if before := immutablePathString(c.Before); before != "" && before != "/" {
+			entry.Before = before
 		}
-		if c.After.String() != "" && c.After.String() != "/" {
-			entry.After = c.After.String()
+		if after := immutablePathString(c.After); after != "" && after != "/" {
+			entry.After = after
 		}
 		out = append(out, entry)
 	}

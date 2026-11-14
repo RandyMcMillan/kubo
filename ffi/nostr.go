@@ -285,6 +285,7 @@ func kubo_nostr_nip05_query(identifier *C.char) *C.char {
 
 type nostrRelayHandle struct {
 	relay  *nostr.Relay
+	ctx    context.Context
 	cancel context.CancelFunc
 }
 
@@ -311,7 +312,7 @@ func kubo_nostr_relay_connect(url *C.char) uint64 {
 	nostrRelaysMu.Lock()
 	handle := nostrRelayNext
 	nostrRelayNext++
-	nostrRelays[handle] = &nostrRelayHandle{relay: relay, cancel: cancel}
+	nostrRelays[handle] = &nostrRelayHandle{relay: relay, ctx: ctx, cancel: cancel}
 	nostrRelaysMu.Unlock()
 
 	setError(nil)
@@ -453,10 +454,9 @@ func kubo_nostr_relay_subscribe(handle uint64, filterJSON *C.char) uint64 {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	sub, err := h.relay.Subscribe(ctx, nostr.Filters{filter})
+	// Tie the subscription to the relay's lifecycle context so it is not
+	// canceled by an arbitrary timeout while the relay stays connected.
+	sub, err := h.relay.Subscribe(h.ctx, nostr.Filters{filter})
 	if err != nil {
 		setError(fmt.Errorf("relay subscribe: %w", err))
 		return 0

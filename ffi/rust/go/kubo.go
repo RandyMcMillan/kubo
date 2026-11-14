@@ -324,6 +324,12 @@ func startNodeInternal(repoPath string, online bool) (uint64, error) {
 		Online: online,
 		Repo:   repo,
 	}
+	// Honor Pubsub.Enabled in the repo config: the daemon normally maps it
+	// to the "pubsub"/"ipnsps" build opts; without this the FFI could never
+	// enable pubsub regardless of config.
+	if repoCfg, err := repo.Config(); err == nil && repoCfg.Pubsub.Enabled.WithDefault(false) {
+		cfg.ExtraOpts = map[string]bool{"pubsub": true, "ipnsps": true}
+	}
 	if !cfg.Online {
 		cfg.Routing = libp2p.NilRouterOption
 	}
@@ -460,11 +466,15 @@ func kubo_node_start_api(handle uint64, multiaddr *C.char) *C.char {
 		corehttp.VersionOption(),
 	}
 
-	// Serve any registered static directories.
+	// Serve any registered static directories. Skip the crate-redirect
+	// sentinel — it is not a URL path and panics ServeMux if registered.
 	if len(h.staticDirs) > 0 {
 		dirs := h.staticDirs
 		opts = append(opts, func(n *core.IpfsNode, _ net.Listener, mux *http.ServeMux) (*http.ServeMux, error) {
 			for prefix, dir := range dirs {
+				if prefix == "__crate_redirect__" {
+					continue
+				}
 				fs := http.FileServer(http.Dir(dir))
 				mux.Handle(prefix, http.StripPrefix(prefix, fs))
 			}
