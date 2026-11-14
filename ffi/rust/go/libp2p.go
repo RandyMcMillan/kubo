@@ -9,13 +9,17 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -30,6 +34,11 @@ type libp2pHostHandle struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	host   host.Host
+
+	streamsMu sync.Mutex
+	streams   map[uint64]network.Stream
+	nextStrm  uint64
+	incoming  chan network.Stream
 }
 
 //export kubo_libp2p_host_new
@@ -44,9 +53,11 @@ func kubo_libp2p_host_new() uint64 {
 	}
 
 	handle := &libp2pHostHandle{
-		ctx:    ctx,
-		cancel: cancel,
-		host:   h,
+		ctx:      ctx,
+		cancel:   cancel,
+		host:     h,
+		streams:  make(map[uint64]network.Stream),
+		incoming: make(chan network.Stream, 16),
 	}
 
 	libp2pHostsMu.Lock()
@@ -199,4 +210,246 @@ func kubo_libp2p_host_protocols(handle uint64) *C.char {
 
 	setError(nil)
 	return C.CString(strings.Join(names, "\n"))
+}
+
+// ---------------------------------------------------------------------------
+// Raw stream plumbing: register protocol handlers and move arbitrary bytes
+// over libp2p streams — any protocol, not just the built-in ones.
+// ---------------------------------------------------------------------------
+
+func (h *libp2pHostHandle) registerStream(s network.Stream) uint64 {
+	h.streamsMu.Lock()
+	hid := h.nextStrm
+	h.nextStrm++
+	h.streams[hid] = s
+	h.streamsMu.Unlock()
+	return hid
+}
+
+//export kubo_libp2p_host_set_stream_handler
+func kubo_libp2p_host_set_stream_handler(handle uint64, proto *C.char) int64 {
+	libp2pHostsMu.RLock()
+	h, ok := libp2pHosts[handle]
+	libp2pHostsMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid libp2p handle %d", handle))
+		return -1
+	}
+
+	pid := protocol.ID(C.GoString(proto))
+	h.host.SetStreamHandler(pid, func(s network.Stream) {
+		select {
+		case h.incoming <- s:
+		case <-h.ctx.Done():
+			s.Reset()
+		}
+	})
+
+	setError(nil)
+	return 0
+}
+
+//export kubo_libp2p_stream_accept
+func kubo_libp2p_stream_accept(handle uint64, timeoutMs C.int64_t) uint64 {
+	libp2pHostsMu.RLock()
+	h, ok := libp2pHosts[handle]
+	libp2pHostsMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid libp2p handle %d", handle))
+		return 0
+	}
+
+	var timer <-chan time.Time
+	if timeoutMs > 0 {
+		t := time.NewTimer(time.Duration(timeoutMs) * time.Millisecond)
+		defer t.Stop()
+		timer = t.C
+	}
+
+	select {
+	case s := <-h.incoming:
+		setError(nil)
+		return h.registerStream(s)
+	case <-timer:
+		setError(fmt.Errorf("accept timed out"))
+		return 0
+	case <-h.ctx.Done():
+		setError(fmt.Errorf("host closed"))
+		return 0
+	}
+}
+
+//export kubo_libp2p_host_new_stream
+func kubo_libp2p_host_new_stream(handle uint64, peerID *C.char, proto *C.char) uint64 {
+	libp2pHostsMu.RLock()
+	h, ok := libp2pHosts[handle]
+	libp2pHostsMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid libp2p handle %d", handle))
+		return 0
+	}
+
+	pid, err := peer.Decode(C.GoString(peerID))
+	if err != nil {
+		setError(fmt.Errorf("decode peer id: %w", err))
+		return 0
+	}
+
+	ctx, cancel := context.WithTimeout(h.ctx, 30*time.Second)
+	defer cancel()
+	s, err := h.host.NewStream(ctx, pid, protocol.ID(C.GoString(proto)))
+	if err != nil {
+		setError(fmt.Errorf("new stream: %w", err))
+		return 0
+	}
+
+	setError(nil)
+	return h.registerStream(s)
+}
+
+//export kubo_libp2p_stream_read
+func kubo_libp2p_stream_read(streamHandle uint64, out **C.uint8_t, outLen *C.size_t) int64 {
+	stream, found := lookupStream(streamHandle)
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return -1
+	}
+
+	buf := make([]byte, 1<<20) // 1 MiB per read; loop for more
+	n, err := stream.Read(buf)
+	if err != nil {
+		if err == io.EOF && n == 0 {
+			*out = nil
+			*outLen = 0
+			setError(nil)
+			return 1 // EOF
+		}
+		if n > 0 {
+			*out = (*C.uint8_t)(C.CBytes(buf[:n]))
+			*outLen = C.size_t(n)
+			setError(nil)
+			return 0
+		}
+		setError(fmt.Errorf("stream read: %w", err))
+		return -1
+	}
+
+	*out = (*C.uint8_t)(C.CBytes(buf[:n]))
+	*outLen = C.size_t(n)
+	setError(nil)
+	return 0
+}
+
+//export kubo_libp2p_stream_write
+func kubo_libp2p_stream_write(streamHandle uint64, data *C.uint8_t, length C.size_t) int64 {
+	var stream network.Stream
+	found := false
+	libp2pHostsMu.RLock()
+	for _, hh := range libp2pHosts {
+		hh.streamsMu.Lock()
+		if s, ok := hh.streams[streamHandle]; ok {
+			stream = s
+			found = true
+		}
+		hh.streamsMu.Unlock()
+		if found {
+			break
+		}
+	}
+	libp2pHostsMu.RUnlock()
+
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return -1
+	}
+
+	n, err := stream.Write(C.GoBytes(unsafe.Pointer(data), C.int(length)))
+	if err != nil {
+		setError(fmt.Errorf("stream write: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return int64(n)
+}
+
+func lookupStream(streamHandle uint64) (network.Stream, bool) {
+	libp2pHostsMu.RLock()
+	defer libp2pHostsMu.RUnlock()
+	for _, hh := range libp2pHosts {
+		hh.streamsMu.Lock()
+		s, ok := hh.streams[streamHandle]
+		hh.streamsMu.Unlock()
+		if ok {
+			return s, true
+		}
+	}
+	return nil, false
+}
+
+//export kubo_libp2p_stream_close
+func kubo_libp2p_stream_close(streamHandle uint64) int64 {
+	stream, found := lookupStream(streamHandle)
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return -1
+	}
+	if err := stream.Close(); err != nil {
+		setError(fmt.Errorf("stream close: %w", err))
+		return -1
+	}
+	deregisterStream(streamHandle)
+	setError(nil)
+	return 0
+}
+
+//export kubo_libp2p_stream_reset
+func kubo_libp2p_stream_reset(streamHandle uint64) int64 {
+	stream, found := lookupStream(streamHandle)
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return -1
+	}
+	if err := stream.Reset(); err != nil {
+		setError(fmt.Errorf("stream reset: %w", err))
+		return -1
+	}
+	deregisterStream(streamHandle)
+	setError(nil)
+	return 0
+}
+
+func deregisterStream(streamHandle uint64) {
+	libp2pHostsMu.RLock()
+	defer libp2pHostsMu.RUnlock()
+	for _, hh := range libp2pHosts {
+		hh.streamsMu.Lock()
+		delete(hh.streams, streamHandle)
+		hh.streamsMu.Unlock()
+	}
+}
+
+//export kubo_libp2p_stream_protocol
+func kubo_libp2p_stream_protocol(streamHandle uint64) *C.char {
+	stream, found := lookupStream(streamHandle)
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return nil
+	}
+	setError(nil)
+	return C.CString(string(stream.Protocol()))
+}
+
+//export kubo_libp2p_stream_remote_peer
+func kubo_libp2p_stream_remote_peer(streamHandle uint64) *C.char {
+	stream, found := lookupStream(streamHandle)
+	if !found {
+		setError(fmt.Errorf("invalid stream handle %d", streamHandle))
+		return nil
+	}
+	setError(nil)
+	return C.CString(stream.Conn().RemotePeer().String())
 }
