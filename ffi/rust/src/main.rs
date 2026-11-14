@@ -1,37 +1,48 @@
-use kubo_ffi::{self, Node};
+//! kubo-ffi binary: two entry points selected by the `web` feature.
+//!
+//! With `--features web`: starts the self-contained WebUI server
+//! (see [`kubo_ffi::web`]) and blocks forever.
+//!
+//! Without it: runs a small FFI demo (version, throwaway node, identity)
+//! so the binary is useful out of the box.
 
+#[cfg(feature = "web")]
 fn main() {
+    if let Err(e) = kubo_ffi::web::serve_blocking() {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
+}
+
+#[cfg(not(feature = "web"))]
+fn main() {
+    use kubo_ffi::{init_repo, Node};
+
+    println!("kubo-ffi demo (build with --features web for the WebUI server)");
     println!("Kubo version: {}", kubo_ffi::version());
-    let dir = std::env::temp_dir().join("kubo-rust-demo");
-    let _ = std::fs::remove_dir_all(&dir);
+
+    let dir = std::env::temp_dir().join(format!(
+        "kubo-ffi-main-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
     let repo = dir.to_string_lossy().to_string();
-    if let Err(e) = kubo_ffi::init_repo(&repo) {
-        eprintln!("init failed: {}", e);
-        return;
+
+    if let Err(e) = init_repo(&repo) {
+        eprintln!("init failed: {e}");
+        std::process::exit(1);
     }
     match Node::start(&repo, true) {
         Ok(node) => {
             println!("peer id: {:?}", node.peer_id());
-            // Dial a bootstrap peer to demonstrate real network connectivity
-            let bootstrap =
-                "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN";
-            println!("dialing bootstrap: {}", bootstrap);
-            let ok = node.connect(bootstrap);
-            println!("connect result: {}", ok);
-            std::thread::sleep(std::time::Duration::from_secs(10));
-            let peers = node.swarm_peers();
-            println!("connected peers: {}", peers.len());
-            for p in peers.iter().take(10) {
-                println!("  {}", p);
-            }
-            for p in peers.iter().take(5) {
-                println!("  {}", p);
-            }
-            let logs = kubo_ffi::get_logs();
-            if !logs.is_empty() {
-                println!("--- logs ---\n{}", logs);
-            }
+            println!("listening: {:?}", node.listening_addrs());
         }
-        Err(e) => eprintln!("node start failed: {}", e),
+        Err(e) => {
+            eprintln!("node start failed: {e}");
+            std::process::exit(1);
+        }
     }
 }
