@@ -155,6 +155,16 @@ extern "C" {
     fn kubo_swarm_local_addrs(handle: u64) -> *mut c_char;
     fn kubo_swarm_listen_addrs(handle: u64) -> *mut c_char;
     fn kubo_swarm_known_addrs(handle: u64) -> *mut c_char;
+
+    // IPNS + keys (Batch C)
+    fn kubo_name_publish(handle: u64, path_str: *const c_char) -> *mut c_char;
+    fn kubo_name_resolve(handle: u64, name: *const c_char) -> *mut c_char;
+    fn kubo_name_search(handle: u64, name: *const c_char) -> *mut c_char;
+    fn kubo_key_generate(handle: u64, name: *const c_char) -> *mut c_char;
+    fn kubo_key_list(handle: u64) -> *mut c_char;
+    fn kubo_key_self(handle: u64) -> *mut c_char;
+    fn kubo_key_rename(handle: u64, old_name: *const c_char, new_name: *const c_char) -> *mut c_char;
+    fn kubo_key_remove(handle: u64, name: *const c_char) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -1050,6 +1060,67 @@ impl Node {
     pub fn swarm_known_addrs(&self) -> Result<String, String> {
         let p = unsafe { kubo_swarm_known_addrs(self.0) };
         from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "known addrs failed".into()))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// IPNS + keys (Batch C)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Publish an IPNS record for a path; returns the IPNS name.
+    pub fn name_publish(&self, cid_or_path: &str) -> Result<String, String> {
+        let c = cstr(cid_or_path)?;
+        let p = unsafe { kubo_name_publish(self.0, c.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "name publish failed".into()))
+    }
+
+    /// Resolve an IPNS name to a path.
+    pub fn name_resolve(&self, name: &str) -> Result<String, String> {
+        let n = cstr(name)?;
+        let p = unsafe { kubo_name_resolve(self.0, n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "name resolve failed".into()))
+    }
+
+    /// Search an IPNS name through the DHT; JSON array of {path, err}.
+    pub fn name_search(&self, name: &str) -> Result<String, String> {
+        let n = cstr(name)?;
+        let p = unsafe { kubo_name_search(self.0, n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "name search failed".into()))
+    }
+
+    /// Generate a new IPNS key; returns {name, path} JSON.
+    pub fn key_generate(&self, name: &str) -> Result<String, String> {
+        let n = cstr(name)?;
+        let p = unsafe { kubo_key_generate(self.0, n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key generate failed".into()))
+    }
+
+    /// List keys as a JSON array of {name, path}.
+    pub fn key_list(&self) -> Result<String, String> {
+        let p = unsafe { kubo_key_list(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key list failed".into()))
+    }
+
+    /// The node's own IPNS key.
+    pub fn key_self(&self) -> Result<String, String> {
+        let p = unsafe { kubo_key_self(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key self failed".into()))
+    }
+
+    /// Rename a key; returns the updated {name, path} JSON.
+    pub fn key_rename(&self, old_name: &str, new_name: &str) -> Result<String, String> {
+        let o = cstr(old_name)?;
+        let n = cstr(new_name)?;
+        let p = unsafe { kubo_key_rename(self.0, o.as_ptr(), n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key rename failed".into()))
+    }
+
+    /// Remove a key; returns the removed {name, path} JSON.
+    pub fn key_remove(&self, name: &str) -> Result<String, String> {
+        let n = cstr(name)?;
+        let p = unsafe { kubo_key_remove(self.0, n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key remove failed".into()))
     }
 }
 
