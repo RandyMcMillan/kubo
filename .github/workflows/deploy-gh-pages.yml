@@ -1,0 +1,182 @@
+# Example consumer workflow for the ipfs-gh-pages reusable action.
+#
+# By default this tracks the action repo's current state: the newest v* tag
+# (currently v3.0.0) is auto-detected at run time, falling back to the
+# default-branch HEAD when no tag exists. Pin a specific ref instead via
+# workflow_dispatch (action_ref) or by setting REF explicitly below.
+
+name: Deploy IPFS site
+
+on:
+  push:
+    # Any file change on the default branch deploys — a push IS a content
+    # change, so no paths filter here.
+    branches: [master, main]
+  schedule:
+    # Daily self-update: picks up a newer action release (the auto-detect
+    # below) even when nothing was pushed here. The `changed` job skips
+    # the run when neither the repo HEAD nor the newest action tag moved
+    # since the last successful deploy.
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+    inputs:
+      action_ref:
+        description: 'Action ref (SHA, branch, or tag e.g. v3.0.0). Empty = auto-detect newest v* tag, else default-branch HEAD.'
+        required: false
+        default: ''
+        type: string
+      node_version:
+        description: 'Node.js version to use for the build'
+        required: true
+        default: '20'
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  changed:
+    # Daily self-update gate. This job runs on EVERY event — it must never
+    # be `if`-skipped: a skipped `needs` job would skip build-and-deploy no
+    # matter what its own `if` says, and that silently killed every
+    # push/dispatch deploy once before. Push/dispatch: instantly true (a
+    # push IS a change). Schedule: true only when the repo HEAD or the
+    # newest action tag moved since the last successful deploy (marker
+    # cache key = HEAD + tag, so a new action release alone still fires).
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.gate.outputs.changed }}
+    steps:
+      - name: Newest action tag (schedule only)
+        if: github.event_name == 'schedule'
+        id: tag
+        run: |
+          TAG=$(git ls-remote --refs --tags --sort=-v:refname https://github.com/RandyMcMillan/ipfs-gh-pages.git 'v*' | head -n 1 | cut -f2 | sed 's|^refs/tags/||')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Restore deployment marker (schedule only)
+        if: github.event_name == 'schedule'
+        id: marker
+        uses: actions/cache/restore@v4
+        with:
+          path: .deployed-marker
+          key: deployed-${{ github.sha }}-${{ steps.tag.outputs.tag }}
+          lookup-only: true
+      - name: Decide
+        id: gate
+        # event != schedule  → true. schedule → true unless the marker
+        # cache hit (same HEAD + tag already deployed).
+        run: echo "changed=${{ github.event_name != 'schedule' || steps.marker.outputs.cache-hit != 'true' && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
+
+  build-and-deploy:
+    needs: changed
+    # Plain if — safe because `changed` always runs (see its comment).
+    if: needs.changed.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          # The deployed site and IPFS mirror cover the whole repo:
+          # submodule contents flatten into repo-manifest.json / repo.car
+          # (an uninitialized submodule contributes zero entries instead
+          # of failing the build).
+          submodules: recursive
+
+      - name: Fetch latest tag (release identity)
+        run: |
+          # The build bakes the repo's latest v* tag into the page (the
+          # header "latest release" chip). The default checkout is shallow
+          # and has no tags — fetch just the newest tag, no full history.
+          TAG=$(git ls-remote --refs --tags --sort=-v:refname origin 'v*' | head -n 1 | cut -f2 | sed 's|^refs/tags/||')
+          if [ -n "$TAG" ]; then
+            git fetch --depth 1 origin "refs/tags/$TAG:refs/tags/$TAG"
+            echo "Fetched latest tag for the build identity: $TAG"
+          else
+            echo "No v* tags on origin — the build falls back to the static version"
+          fi
+
+      - name: Determine Action Ref and Node Version
+        id: set-inputs
+        run: |
+          # Pin explicitly via workflow_dispatch; otherwise auto-detect the
+          # action repo's current state: newest v* tag, else HEAD.
+          REF="${{ github.event.inputs.action_ref }}"
+          if [ -z "$REF" ]; then
+            REF=$(git ls-remote --refs --tags --sort=-v:refname https://github.com/RandyMcMillan/ipfs-gh-pages.git 'v*' | head -n 1 | cut -f2 | sed 's|^refs/tags/||')
+            if [ -n "$REF" ]; then
+              echo "Auto-detected newest tag of RandyMcMillan/ipfs-gh-pages: $REF"
+            else
+              REF=$(git ls-remote https://github.com/RandyMcMillan/ipfs-gh-pages.git HEAD | cut -f1)
+              echo "No v* tags found — using default-branch HEAD: $REF"
+            fi
+          fi
+          echo "action_ref=$REF" >> $GITHUB_OUTPUT
+          echo "Using action ref: $REF"
+
+          NODE_VER="${{ github.event.inputs.node_version }}"
+          if [ -z "$NODE_VER" ]; then
+            NODE_VER="20"
+          fi
+          echo "node_version=$NODE_VER" >> $GITHUB_OUTPUT
+          echo "Using Node version: $NODE_VER"
+
+      - name: Checkout Action Repository and Pull Tags
+        uses: actions/checkout@v4
+        with:
+          repository: RandyMcMillan/ipfs-gh-pages
+          ref: ${{ steps.set-inputs.outputs.action_ref }}
+          path: temp-action-repo
+          fetch-tags: true # Ensures tags are fetched during checkout
+
+      - name: Print Diff (Selected Ref vs Main Branch)
+        run: |
+          echo "=========================================="
+          echo "Comparing selected ref (${{ steps.set-inputs.outputs.action_ref }}) vs main"
+          echo "=========================================="
+          cd temp-action-repo
+          git fetch --tags origin
+          git fetch origin main || git fetch origin master || true
+          git diff ${{ steps.set-inputs.outputs.action_ref }} origin/main || git diff ${{ steps.set-inputs.outputs.action_ref }} origin/master || true
+
+      - name: Build and deploy IPFS site
+        id: deploy
+        uses: ./temp-action-repo
+        with:
+          node-version: ${{ steps.set-inputs.outputs.node_version }}
+          deploy: 'true'
+          # Optional: pin the release CAR to Pinata public IPFS. Create the
+          # secret in the repo's Settings → Secrets and variables → Actions
+          # (a Pinata JWT from app.pinata.cloud → Keys). Missing/empty = skipped.
+          pinata-jwt: ${{ secrets.PINATA_JWT }}
+          # Optional: pin the release CAR to Filebase IPFS. Create three
+          # secrets in the repo's Settings → Secrets and variables → Actions
+          # (Filebase dashboard → Access Keys: accessKeyId + secretAccessKey;
+          # the bucket is the bucket you pin into). Missing/empty = skipped.
+          filebase-access-key-id: ${{ secrets.FILEBASE_ACCESS_KEY_ID }}
+          filebase-secret-access-key: ${{ secrets.FILEBASE_SECRET_ACCESS_KEY }}
+          filebase-bucket: ${{ secrets.FILEBASE_BUCKET }}
+
+      - name: Record deployment marker (daily gate)
+        id: marker
+        run: |
+          TAG=$(git ls-remote --refs --tags --sort=-v:refname https://github.com/RandyMcMillan/ipfs-gh-pages.git 'v*' | head -n 1 | cut -f2 | sed 's|^refs/tags/||')
+          echo "key=deployed-${{ github.sha }}-${TAG}" >> "$GITHUB_OUTPUT"
+          echo "${{ github.sha }} $TAG" > .deployed-marker
+      - name: Save deployment marker
+        uses: actions/cache/save@v4
+        # Best-effort: a same-key save failure (concurrent run) only costs
+        # one redundant daily deploy, never a failed deploy.
+        continue-on-error: true
+        with:
+          path: .deployed-marker
+          key: ${{ steps.marker.outputs.key }}
+
