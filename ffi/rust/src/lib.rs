@@ -149,6 +149,12 @@ extern "C" {
     fn kubo_pin_verify(handle: u64) -> *mut c_char;
     fn kubo_dag_import(handle: u64, data: *const u8, length: usize) -> *mut c_char;
     fn kubo_unixfs_ls(handle: u64, path_str: *const c_char) -> *mut c_char;
+
+    // swarm completion (Batch B)
+    fn kubo_swarm_disconnect(handle: u64, addr: *const c_char) -> i64;
+    fn kubo_swarm_local_addrs(handle: u64) -> *mut c_char;
+    fn kubo_swarm_listen_addrs(handle: u64) -> *mut c_char;
+    fn kubo_swarm_known_addrs(handle: u64) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -1009,6 +1015,41 @@ impl Node {
         let c = cstr(cid_or_path)?;
         let p = unsafe { kubo_unixfs_ls(self.0, c.as_ptr()) };
         from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "unixfs ls failed".into()))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Swarm completion (Batch B)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Disconnect from a peer multiaddr.
+    pub fn swarm_disconnect(&self, multiaddr: &str) -> Result<(), String> {
+        let a = cstr(multiaddr)?;
+        let rc = unsafe { kubo_swarm_disconnect(self.0, a.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "swarm disconnect failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// This node's own addresses as a JSON array of multiaddr strings.
+    pub fn swarm_local_addrs(&self) -> Result<String, String> {
+        let p = unsafe { kubo_swarm_local_addrs(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "local addrs failed".into()))
+    }
+
+    /// Addresses the swarm is listening on, JSON array.
+    pub fn swarm_listen_addrs(&self) -> Result<String, String> {
+        let p = unsafe { kubo_swarm_listen_addrs(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "listen addrs failed".into()))
+    }
+
+    /// Known addresses per connected peer: JSON map peer_id -> [multiaddr].
+    pub fn swarm_known_addrs(&self) -> Result<String, String> {
+        let p = unsafe { kubo_swarm_known_addrs(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "known addrs failed".into()))
     }
 }
 
