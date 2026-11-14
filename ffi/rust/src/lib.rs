@@ -81,6 +81,64 @@ extern "C" {
     // swarm key helpers
     fn kubo_nostr_nsec_to_swarm_key(nsec_or_hex: *const c_char) -> *mut c_char;
     fn kubo_swarm_key_generate() -> *mut c_char;
+
+    // blocks
+    fn kubo_block_put(handle: u64, data: *const u8, length: usize) -> *mut c_char;
+    fn kubo_block_get(
+        handle: u64,
+        cid_str: *const c_char,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+    ) -> i64;
+    fn kubo_block_stat(handle: u64, cid_str: *const c_char) -> i64;
+
+    // git (repo handles)
+    fn kubo_git_clone(url: *const c_char, path: *const c_char, bare: u8) -> i64;
+    fn kubo_git_open(path: *const c_char) -> u64;
+    fn kubo_git_init(path: *const c_char, bare: u8) -> i64;
+    fn kubo_git_repo_head(handle: u64) -> *mut c_char;
+    fn kubo_git_repo_free(handle: u64) -> i64;
+    fn kubo_git_repo_is_bare(handle: u64) -> i64;
+    fn kubo_git_repo_branches(handle: u64) -> *mut c_char;
+    fn kubo_git_repo_remotes(handle: u64) -> *mut c_char;
+    fn kubo_git_repo_create_branch(
+        handle: u64,
+        name: *const c_char,
+        commit_hash: *const c_char,
+    ) -> i64;
+    fn kubo_git_repo_commit_lookup(handle: u64, hash: *const c_char) -> *mut c_char;
+    fn kubo_git_repo_tree_entries(handle: u64, hash: *const c_char) -> *mut c_char;
+    fn kubo_git_repo_blob_read(
+        handle: u64,
+        hash: *const c_char,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+    ) -> i64;
+    fn kubo_git_repo_status(handle: u64) -> *mut c_char;
+    fn kubo_git_repo_diff_trees(
+        handle: u64,
+        old_hash: *const c_char,
+        new_hash: *const c_char,
+    ) -> *mut c_char;
+    fn kubo_git_push(path: *const c_char, remote_name: *const c_char) -> i64;
+
+    // nostr extras
+    fn kubo_nostr_event_verify(json_str: *const c_char) -> i64;
+    fn kubo_nostr_nip19_encode_pubkey(hex: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_decode_pubkey(bech32: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_encode_seckey(hex: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_decode_seckey(bech32: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_encode_note(hex: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_decode_note(bech32: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip19_encode_entity(
+        pubkey: *const c_char,
+        kind: c_int,
+        identifier: *const c_char,
+        relays: *const c_char,
+    ) -> *mut c_char;
+    fn kubo_nostr_nip19_decode_entity(bech32: *const c_char) -> *mut c_char;
+    fn kubo_nostr_nip05_verify(identifier: *const c_char, pubkey: *const c_char) -> i64;
+    fn kubo_nostr_nip05_query(identifier: *const c_char) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -586,6 +644,286 @@ impl NostrRelaySub {
             Ok(())
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Blocks (Phase 0)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Store a raw block; returns its CID string.
+    pub fn block_put(&self, data: &[u8]) -> Result<String, String> {
+        let p = unsafe { kubo_block_put(self.0, data.as_ptr(), data.len()) };
+        if p.is_null() {
+            Err(last_error().unwrap_or_else(|| "block put failed".into()))
+        } else {
+            Ok(from_cstr(p).unwrap_or_default())
+        }
+    }
+
+    /// Fetch a raw block by CID.
+    pub fn block_get(&self, cid: &str) -> Result<Vec<u8>, String> {
+        let c = cstr(cid)?;
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut len: usize = 0;
+        let rc = unsafe { kubo_block_get(self.0, c.as_ptr(), &mut out, &mut len) };
+        if rc != 0 {
+            return Err(last_error().unwrap_or_else(|| "block get failed".into()));
+        }
+        if out.is_null() {
+            return Ok(Vec::new());
+        }
+        let data = unsafe { slice::from_raw_parts(out, len) }.to_vec();
+        unsafe { kubo_ffi_free_buffer(out) };
+        Ok(data)
+    }
+
+    /// Size of a block by CID, or error if absent.
+    pub fn block_stat(&self, cid: &str) -> Result<i64, String> {
+        let c = cstr(cid)?;
+        let rc = unsafe { kubo_block_stat(self.0, c.as_ptr()) };
+        if rc < 0 {
+            Err(last_error().unwrap_or_else(|| "block stat failed".into()))
+        } else {
+            Ok(rc)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Git repos (Phase 0)
+// ---------------------------------------------------------------------------
+
+/// An opened git repository handle. Frees itself on drop.
+pub struct GitRepo(u64);
+
+impl GitRepo {
+    /// Clone `url` into `path`; `bare` for a bare clone.
+    pub fn clone(url: &str, path: &str, bare: bool) -> Result<(), String> {
+        let u = cstr(url)?;
+        let p = cstr(path)?;
+        let rc = unsafe { kubo_git_clone(u.as_ptr(), p.as_ptr(), if bare { 1 } else { 0 }) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "git clone failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Create a new repository at `path`.
+    pub fn init(path: &str, bare: bool) -> Result<(), String> {
+        let p = cstr(path)?;
+        let rc = unsafe { kubo_git_init(p.as_ptr(), if bare { 1 } else { 0 }) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "git init failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Open an existing repository.
+    pub fn open(path: &str) -> Result<Self, String> {
+        let p = cstr(path)?;
+        let h = unsafe { kubo_git_open(p.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "git open failed".into()))
+        } else {
+            Ok(GitRepo(h))
+        }
+    }
+
+    /// Current HEAD as a hash string.
+    pub fn head(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_git_repo_head(self.0) })
+    }
+
+    pub fn is_bare(&self) -> bool {
+        (unsafe { kubo_git_repo_is_bare(self.0) }) != 0
+    }
+
+    /// Branch names, one per line.
+    pub fn branches(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_git_repo_branches(self.0) })
+    }
+
+    /// Remotes, one per line.
+    pub fn remotes(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_git_repo_remotes(self.0) })
+    }
+
+    /// Create a branch at an existing commit hash.
+    pub fn create_branch(&self, name: &str, commit_hash: &str) -> Result<(), String> {
+        let n = cstr(name)?;
+        let h = cstr(commit_hash)?;
+        let rc = unsafe { kubo_git_repo_create_branch(self.0, n.as_ptr(), h.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "create_branch failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Look up a commit; returns a JSON description.
+    pub fn commit_lookup(&self, hash: &str) -> Result<String, String> {
+        let h = cstr(hash)?;
+        let p = unsafe { kubo_git_repo_commit_lookup(self.0, h.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "commit lookup failed".into()))
+    }
+
+    /// List a tree object's entries as JSON.
+    pub fn tree_entries(&self, hash: &str) -> Result<String, String> {
+        let h = cstr(hash)?;
+        let p = unsafe { kubo_git_repo_tree_entries(self.0, h.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "tree entries failed".into()))
+    }
+
+    /// Read a blob object's raw bytes.
+    pub fn blob_read(&self, hash: &str) -> Result<Vec<u8>, String> {
+        let h = cstr(hash)?;
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut len: usize = 0;
+        let rc = unsafe { kubo_git_repo_blob_read(self.0, h.as_ptr(), &mut out, &mut len) };
+        if rc != 0 {
+            return Err(last_error().unwrap_or_else(|| "blob read failed".into()));
+        }
+        if out.is_null() {
+            return Ok(Vec::new());
+        }
+        let data = unsafe { slice::from_raw_parts(out, len) }.to_vec();
+        unsafe { kubo_ffi_free_buffer(out) };
+        Ok(data)
+    }
+
+    /// Working-tree status as JSON.
+    pub fn status(&self) -> Result<String, String> {
+        let p = unsafe { kubo_git_repo_status(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "status failed".into()))
+    }
+
+    /// Diff two trees as JSON.
+    pub fn diff_trees(&self, old_hash: &str, new_hash: &str) -> Result<String, String> {
+        let o = cstr(old_hash)?;
+        let n = cstr(new_hash)?;
+        let p = unsafe { kubo_git_repo_diff_trees(self.0, o.as_ptr(), n.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "diff failed".into()))
+    }
+}
+
+impl Drop for GitRepo {
+    fn drop(&mut self) {
+        unsafe {
+            kubo_git_repo_free(self.0);
+        }
+    }
+}
+
+/// Push `remote_name` in the repository at `path`.
+pub fn git_push(path: &str, remote_name: &str) -> Result<(), String> {
+    let p = cstr(path)?;
+    let r = cstr(remote_name)?;
+    let rc = unsafe { kubo_git_push(p.as_ptr(), r.as_ptr()) };
+    if rc != 0 {
+        Err(last_error().unwrap_or_else(|| "git push failed".into()))
+    } else {
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Nostr extras (Phase 0)
+// ---------------------------------------------------------------------------
+
+/// Verify a signed event JSON; Ok(()) means valid.
+pub fn nostr_event_verify(event_json: &str) -> Result<(), String> {
+    let j = cstr(event_json)?;
+    let rc = unsafe { kubo_nostr_event_verify(j.as_ptr()) };
+    if rc != 0 {
+        Err(last_error().unwrap_or_else(|| "event verify failed".into()))
+    } else {
+        Ok(())
+    }
+}
+
+/// npub encode a hex public key.
+pub fn nip19_encode_pubkey(hex: &str) -> Result<String, String> {
+    let h = cstr(hex)?;
+    let p = unsafe { kubo_nostr_nip19_encode_pubkey(h.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "encode failed".into()))
+}
+
+/// npub decode to hex.
+pub fn nip19_decode_pubkey(bech32: &str) -> Result<String, String> {
+    let b = cstr(bech32)?;
+    let p = unsafe { kubo_nostr_nip19_decode_pubkey(b.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "decode failed".into()))
+}
+
+/// nsec encode a hex secret key.
+pub fn nip19_encode_seckey(hex: &str) -> Result<String, String> {
+    let h = cstr(hex)?;
+    let p = unsafe { kubo_nostr_nip19_encode_seckey(h.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "encode failed".into()))
+}
+
+/// nsec decode to hex.
+pub fn nip19_decode_seckey(bech32: &str) -> Result<String, String> {
+    let b = cstr(bech32)?;
+    let p = unsafe { kubo_nostr_nip19_decode_seckey(b.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "decode failed".into()))
+}
+
+/// note1 encode an event-id hex.
+pub fn nip19_encode_note(hex: &str) -> Result<String, String> {
+    let h = cstr(hex)?;
+    let p = unsafe { kubo_nostr_nip19_encode_note(h.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "encode failed".into()))
+}
+
+/// note1 decode to event-id hex.
+pub fn nip19_decode_note(bech32: &str) -> Result<String, String> {
+    let b = cstr(bech32)?;
+    let p = unsafe { kubo_nostr_nip19_decode_note(b.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "decode failed".into()))
+}
+
+/// naddr encode (kind, identifier, relays JSON).
+pub fn nip19_encode_entity(
+    pubkey_hex: &str,
+    kind: i32,
+    identifier: &str,
+    relays_json: &str,
+) -> Result<String, String> {
+    let p = cstr(pubkey_hex)?;
+    let i = cstr(identifier)?;
+    let r = cstr(relays_json)?;
+    let out = unsafe { kubo_nostr_nip19_encode_entity(p.as_ptr(), kind, i.as_ptr(), r.as_ptr()) };
+    from_cstr(out).ok_or_else(|| last_error().unwrap_or_else(|| "encode failed".into()))
+}
+
+/// naddr decode; returns the entity JSON.
+pub fn nip19_decode_entity(bech32: &str) -> Result<String, String> {
+    let b = cstr(bech32)?;
+    let p = unsafe { kubo_nostr_nip19_decode_entity(b.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "decode failed".into()))
+}
+
+/// NIP-05 verify: does `identifier`'s server declare `pubkey_hex`?
+pub fn nip05_verify(identifier: &str, pubkey_hex: &str) -> Result<(), String> {
+    let i = cstr(identifier)?;
+    let p = cstr(pubkey_hex)?;
+    let rc = unsafe { kubo_nostr_nip05_verify(i.as_ptr(), p.as_ptr()) };
+    if rc != 0 {
+        Err(last_error().unwrap_or_else(|| "nip05 verify failed".into()))
+    } else {
+        Ok(())
+    }
+}
+
+/// NIP-05 query: returns the pubkey JSON for an identifier.
+pub fn nip05_query(identifier: &str) -> Result<String, String> {
+    let i = cstr(identifier)?;
+    let p = unsafe { kubo_nostr_nip05_query(i.as_ptr()) };
+    from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "nip05 query failed".into()))
 }
 
 #[cfg(test)]
