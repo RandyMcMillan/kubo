@@ -929,6 +929,124 @@ func kubo_unixfs_add_bytes(handle uint64, data *C.uint8_t, length C.size_t) *C.c
 	return C.CString(p.RootCid().String())
 }
 
+//export kubo_unixfs_add_path
+func kubo_unixfs_add_path(handle uint64, pathStr *C.char, optsJSON *C.char) *C.char {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return nil
+	}
+
+	var opts struct {
+		CidVersion    *int   `json:"cid_version"`
+		Chunker       string `json:"chunker"`
+		Layout        string `json:"layout"`
+		Pin           bool   `json:"pin"`
+		RawLeaves     bool   `json:"raw_leaves"`
+		OnlyHash      bool   `json:"only_hash"`
+		Nocopy        bool   `json:"nocopy"`
+		Inline        bool   `json:"inline"`
+		PreserveMode  bool   `json:"preserve_mode"`
+		PreserveMtime bool   `json:"preserve_mtime"`
+		Wrap          bool   `json:"wrap"`
+	}
+	if err := json.Unmarshal([]byte(C.GoString(optsJSON)), &opts); err != nil {
+		setError(fmt.Errorf("unmarshal add opts: %w", err))
+		return nil
+	}
+
+	p := C.GoString(pathStr)
+	fi, err := os.Stat(p)
+	if err != nil {
+		setError(fmt.Errorf("stat %s: %w", p, err))
+		return nil
+	}
+	node, err := files.NewSerialFile(p, false, fi)
+	if err != nil {
+		setError(fmt.Errorf("serial file: %w", err))
+		return nil
+	}
+	if opts.Wrap {
+		node = files.NewMapDirectory(map[string]files.Node{fi.Name(): node})
+	}
+
+	addOpts := make([]options.UnixfsAddOption, 0, 10)
+	if opts.CidVersion != nil {
+		addOpts = append(addOpts, options.Unixfs.CidVersion(*opts.CidVersion))
+	}
+	if opts.Chunker != "" {
+		addOpts = append(addOpts, options.Unixfs.Chunker(opts.Chunker))
+	}
+	switch opts.Layout {
+	case "balanced":
+		addOpts = append(addOpts, options.Unixfs.Layout(options.BalancedLayout))
+	case "trickle":
+		addOpts = append(addOpts, options.Unixfs.Layout(options.TrickleLayout))
+	}
+	if opts.Pin {
+		addOpts = append(addOpts, options.Unixfs.Pin(true, ""))
+	}
+	if opts.RawLeaves {
+		addOpts = append(addOpts, options.Unixfs.RawLeaves(true))
+	}
+	if opts.OnlyHash {
+		addOpts = append(addOpts, options.Unixfs.HashOnly(true))
+	}
+	if opts.Nocopy {
+		addOpts = append(addOpts, options.Unixfs.Nocopy(true))
+	}
+	if opts.Inline {
+		addOpts = append(addOpts, options.Unixfs.Inline(true))
+	}
+	if opts.PreserveMode {
+		addOpts = append(addOpts, options.Unixfs.PreserveMode(true))
+	}
+	if opts.PreserveMtime {
+		addOpts = append(addOpts, options.Unixfs.PreserveMtime(true))
+	}
+
+	root, err := h.api.Unixfs().Add(h.ctx, node, addOpts...)
+	if err != nil {
+		setError(fmt.Errorf("unixfs add path: %w", err))
+		return nil
+	}
+
+	setError(nil)
+	return C.CString(root.RootCid().String())
+}
+
+//export kubo_block_rm
+func kubo_block_rm(handle uint64, cidStr *C.char, force C.uint8_t) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+
+	p, err := path.NewPath(C.GoString(cidStr))
+	if err != nil {
+		setError(fmt.Errorf("parse path: %w", err))
+		return -1
+	}
+	err = h.api.Block().Rm(h.ctx, p, func(s *options.BlockRmSettings) error {
+		s.Force = force != 0
+		return nil
+	})
+	if err != nil {
+		setError(fmt.Errorf("block rm: %w", err))
+		return -1
+	}
+
+	setError(nil)
+	return 0
+}
+
 //export kubo_unixfs_cat
 func kubo_unixfs_cat(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.size_t) int64 {
 	nodesMu.RLock()
