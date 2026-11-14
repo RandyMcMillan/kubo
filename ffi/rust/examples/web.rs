@@ -41,7 +41,7 @@ fn main() {
     ));
     let _ = std::fs::remove_dir_all(&dir);
     let repo = dir.to_string_lossy().to_string();
-    if let Err(e) = kubo_ffi::init_repo(&repo) {
+    if let Err(e) = kubo_ffi::init_repo_networked(&repo) {
         eprintln!("init failed: {}", e);
         std::process::exit(1);
     }
