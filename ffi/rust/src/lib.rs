@@ -1,6 +1,7 @@
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_int;
 use std::slice;
+use std::time::Duration;
 
 #[link(name = "kubo_ffi", kind = "static")]
 extern "C" {
@@ -218,6 +219,21 @@ extern "C" {
     fn kubo_libp2p_host_connect(handle: u64, addr: *const c_char) -> i64;
     fn kubo_libp2p_host_ping(handle: u64, peer_id: *const c_char) -> i64;
     fn kubo_libp2p_host_protocols(handle: u64) -> *mut c_char;
+
+    // raw stream plumbing (Batch S2)
+    fn kubo_libp2p_host_set_stream_handler(handle: u64, proto: *const c_char) -> i64;
+    fn kubo_libp2p_stream_accept(handle: u64, timeout_ms: i64) -> u64;
+    fn kubo_libp2p_host_new_stream(handle: u64, peer_id: *const c_char, proto: *const c_char) -> u64;
+    fn kubo_libp2p_stream_read(
+        stream: u64,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+    ) -> i64;
+    fn kubo_libp2p_stream_write(stream: u64, data: *const u8, length: usize) -> i64;
+    fn kubo_libp2p_stream_close(stream: u64) -> i64;
+    fn kubo_libp2p_stream_reset(stream: u64) -> i64;
+    fn kubo_libp2p_stream_protocol(stream: u64) -> *mut c_char;
+    fn kubo_libp2p_stream_remote_peer(stream: u64) -> *mut c_char;
 
     // argv command variant (Batch G)
     fn kubo_run_command(
@@ -609,6 +625,43 @@ impl P2pHost {
             .ok_or_else(|| last_error().unwrap_or_else(|| "protocols failed".into()))
     }
 
+    /// Register a handler for an arbitrary protocol ID (e.g.
+    /// "/my/proto/1.0.0"). Incoming streams are queued for
+    /// [`P2pHost::accept_stream`].
+    pub fn set_stream_handler(&self, protocol: &str) -> Result<(), String> {
+        let p = cstr(protocol)?;
+        let rc = unsafe { kubo_libp2p_host_set_stream_handler(self.0, p.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "set stream handler failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Take the next stream opened to a registered handler. `timeout` is
+    /// capped by the implementation's poll; `None` waits up to 30s.
+    pub fn accept_stream(&self, timeout: Option<Duration>) -> Result<P2pStream, String> {
+        let ms = timeout.map(|d| d.as_millis() as i64).unwrap_or(30_000);
+        let h = unsafe { kubo_libp2p_stream_accept(self.0, ms) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "accept failed".into()))
+        } else {
+            Ok(P2pStream(h))
+        }
+    }
+
+    /// Open a new stream to a peer on an arbitrary protocol.
+    pub fn new_stream(&self, peer_id: &str, protocol: &str) -> Result<P2pStream, String> {
+        let pid = cstr(peer_id)?;
+        let proto = cstr(protocol)?;
+        let h = unsafe { kubo_libp2p_host_new_stream(self.0, pid.as_ptr(), proto.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "new stream failed".into()))
+        } else {
+            Ok(P2pStream(h))
+        }
+    }
+
     /// Close the host, releasing its listen sockets. Called again by Drop on
     /// an already-closed handle; the duplicate is ignored.
     pub fn close(&self) -> Result<(), String> {
@@ -624,6 +677,78 @@ impl Drop for P2pHost {
     fn drop(&mut self) {
         unsafe {
             kubo_libp2p_host_close(self.0);
+        }
+    }
+}
+
+/// A raw libp2p stream on an arbitrary protocol.
+pub struct P2pStream(u64);
+
+impl P2pStream {
+    /// Read up to 1 MiB. `Ok(None)` signals EOF (stream closed by the peer).
+    pub fn read(&self) -> Result<Option<Vec<u8>>, String> {
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        let rc = unsafe { kubo_libp2p_stream_read(self.0, &mut out, &mut out_len) };
+        match rc {
+            1 => Ok(None),
+            0 => {
+                if out.is_null() || out_len == 0 {
+                    return Ok(Some(Vec::new()));
+                }
+                let bytes = unsafe { slice::from_raw_parts(out, out_len).to_vec() };
+                unsafe { kubo_ffi_free_buffer(out) };
+                Ok(Some(bytes))
+            }
+            _ => Err(last_error().unwrap_or_else(|| "stream read failed".into())),
+        }
+    }
+
+    /// Write bytes; returns the number written.
+    pub fn write(&self, data: &[u8]) -> Result<usize, String> {
+        let n = unsafe { kubo_libp2p_stream_write(self.0, data.as_ptr(), data.len()) };
+        if n < 0 {
+            Err(last_error().unwrap_or_else(|| "stream write failed".into()))
+        } else {
+            Ok(n as usize)
+        }
+    }
+
+    /// Graceful close (finishes writing). Idempotent with Drop.
+    pub fn close(&self) -> Result<(), String> {
+        let rc = unsafe { kubo_libp2p_stream_close(self.0) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "stream close failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Abrupt reset. Idempotent with Drop.
+    pub fn reset(&self) -> Result<(), String> {
+        let rc = unsafe { kubo_libp2p_stream_reset(self.0) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "stream reset failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// The protocol this stream serves.
+    pub fn protocol(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_libp2p_stream_protocol(self.0) })
+    }
+
+    /// The peer on the other end.
+    pub fn remote_peer(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_libp2p_stream_remote_peer(self.0) })
+    }
+}
+
+impl Drop for P2pStream {
+    fn drop(&mut self) {
+        unsafe {
+            kubo_libp2p_stream_close(self.0);
         }
     }
 }
@@ -1707,6 +1832,17 @@ mod tests {
         let _: fn(&P2pHost, &str) -> Result<u64, String> = P2pHost::ping;
         let _: fn(&P2pHost) -> Result<String, String> = P2pHost::protocols;
         let _: fn(&P2pHost) -> Result<(), String> = P2pHost::close;
+
+        // raw stream plumbing
+        let _: fn(&P2pHost, &str) -> Result<(), String> = P2pHost::set_stream_handler;
+        let _: fn(&P2pHost, Option<Duration>) -> Result<P2pStream, String> = P2pHost::accept_stream;
+        let _: fn(&P2pHost, &str, &str) -> Result<P2pStream, String> = P2pHost::new_stream;
+        let _: fn(&P2pStream) -> Result<Option<Vec<u8>>, String> = P2pStream::read;
+        let _: fn(&P2pStream, &[u8]) -> Result<usize, String> = P2pStream::write;
+        let _: fn(&P2pStream) -> Result<(), String> = P2pStream::close;
+        let _: fn(&P2pStream) -> Result<(), String> = P2pStream::reset;
+        let _: fn(&P2pStream) -> Option<String> = P2pStream::protocol;
+        let _: fn(&P2pStream) -> Option<String> = P2pStream::remote_peer;
     }
 
     #[test]
