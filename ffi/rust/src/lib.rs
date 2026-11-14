@@ -179,6 +179,19 @@ extern "C" {
         base: *const c_char,
         target: *const c_char,
     ) -> *mut c_char;
+
+    // pubsub + routing (Batch E)
+    fn kubo_pubsub_publish(handle: u64, topic: *const c_char, data: *const u8, length: usize) -> i64;
+    fn kubo_pubsub_ls(handle: u64) -> *mut c_char;
+    fn kubo_pubsub_peers(handle: u64, topic: *const c_char) -> *mut c_char;
+    fn kubo_pubsub_subscribe(handle: u64, topic: *const c_char) -> u64;
+    fn kubo_pubsub_next(sub_handle: u64) -> *mut c_char;
+    fn kubo_pubsub_unsubscribe(sub_handle: u64) -> i64;
+    fn kubo_routing_get(handle: u64, key: *const c_char, out: *mut *mut u8, out_len: *mut usize) -> i64;
+    fn kubo_routing_put(handle: u64, key: *const c_char, value: *const u8, length: usize) -> i64;
+    fn kubo_routing_find_peer(handle: u64, peer_id: *const c_char) -> *mut c_char;
+    fn kubo_routing_find_providers(handle: u64, path_str: *const c_char) -> *mut c_char;
+    fn kubo_routing_provide(handle: u64, path_str: *const c_char) -> i64;
 }
 
 // ---------------------------------------------------------------------------
@@ -1166,6 +1179,116 @@ impl Node {
         let t = cstr(target)?;
         let p = unsafe { kubo_object_diff(self.0, b.as_ptr(), t.as_ptr()) };
         from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "object diff failed".into()))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// PubSub + Routing (Batch E)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Publish a message to a pubsub topic.
+    pub fn pubsub_publish(&self, topic: &str, data: &[u8]) -> Result<(), String> {
+        let t = cstr(topic)?;
+        let rc = unsafe { kubo_pubsub_publish(self.0, t.as_ptr(), data.as_ptr(), data.len()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "pubsub publish failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Topics with active subscriptions, JSON array of strings.
+    pub fn pubsub_ls(&self) -> Result<String, String> {
+        let p = unsafe { kubo_pubsub_ls(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "pubsub ls failed".into()))
+    }
+
+    /// Peers subscribed to a topic (empty topic = all), JSON array of peer IDs.
+    pub fn pubsub_peers(&self, topic: &str) -> Result<String, String> {
+        let t = cstr(topic)?;
+        let p = unsafe { kubo_pubsub_peers(self.0, t.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "pubsub peers failed".into()))
+    }
+
+    /// Subscribe to a topic; returns a subscription handle for `pubsub_next`.
+    pub fn pubsub_subscribe(&self, topic: &str) -> Result<u64, String> {
+        let t = cstr(topic)?;
+        let h = unsafe { kubo_pubsub_subscribe(self.0, t.as_ptr()) };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "pubsub subscribe failed".into()))
+        } else {
+            Ok(h)
+        }
+    }
+
+    /// Next message on a subscription as JSON {from, data(base64)}; blocks.
+    pub fn pubsub_next(sub_handle: u64) -> Result<String, String> {
+        let p = unsafe { kubo_pubsub_next(sub_handle) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "pubsub next failed".into()))
+    }
+
+    /// Unsubscribe and release the subscription handle.
+    pub fn pubsub_unsubscribe(sub_handle: u64) -> Result<(), String> {
+        let rc = unsafe { kubo_pubsub_unsubscribe(sub_handle) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "pubsub unsubscribe failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Routing value lookup by key.
+    pub fn routing_get(&self, key: &str) -> Result<Vec<u8>, String> {
+        let k = cstr(key)?;
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut len: usize = 0;
+        let rc = unsafe { kubo_routing_get(self.0, k.as_ptr(), &mut out, &mut len) };
+        if rc != 0 {
+            return Err(last_error().unwrap_or_else(|| "routing get failed".into()));
+        }
+        if out.is_null() {
+            return Ok(Vec::new());
+        }
+        let data = unsafe { slice::from_raw_parts(out, len) }.to_vec();
+        unsafe { kubo_ffi_free_buffer(out) };
+        Ok(data)
+    }
+
+    /// Store a routing value under a key.
+    pub fn routing_put(&self, key: &str, value: &[u8]) -> Result<(), String> {
+        let k = cstr(key)?;
+        let rc = unsafe { kubo_routing_put(self.0, k.as_ptr(), value.as_ptr(), value.len()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "routing put failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Find a peer by ID; returns {id, addrs} JSON.
+    pub fn routing_find_peer(&self, peer_id: &str) -> Result<String, String> {
+        let p = cstr(peer_id)?;
+        let out = unsafe { kubo_routing_find_peer(self.0, p.as_ptr()) };
+        from_cstr(out).ok_or_else(|| last_error().unwrap_or_else(|| "find peer failed".into()))
+    }
+
+    /// Find providers of a path; JSON array of {id, addrs}.
+    pub fn routing_find_providers(&self, cid_or_path: &str) -> Result<String, String> {
+        let c = cstr(cid_or_path)?;
+        let p = unsafe { kubo_routing_find_providers(self.0, c.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "find providers failed".into()))
+    }
+
+    /// Announce this node as a provider of a path.
+    pub fn routing_provide(&self, cid_or_path: &str) -> Result<(), String> {
+        let c = cstr(cid_or_path)?;
+        let rc = unsafe { kubo_routing_provide(self.0, c.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "routing provide failed".into()))
+        } else {
+            Ok(())
+        }
     }
 }
 
