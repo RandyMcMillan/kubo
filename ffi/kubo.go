@@ -294,6 +294,9 @@ type nodeHandle struct {
 	apiListener    manet.Listener
 	apiNetListener net.Listener
 	apiServer      *http.Server
+	gwListener     manet.Listener
+	gwNetListener  net.Listener
+	gwServer       *http.Server
 	staticDirs     map[string]string
 	authToken      string
 }
@@ -383,6 +386,9 @@ func kubo_node_stop(handle uint64) int64 {
 
 	if h.apiListener != nil {
 		h.apiListener.Close()
+	}
+	if h.gwListener != nil {
+		h.gwListener.Close()
 	}
 	h.cancel()
 	if err := h.node.Close(); err != nil {
@@ -656,21 +662,21 @@ func kubo_node_start_gateway(handle uint64, multiaddr *C.char) *C.char {
 		})
 	}
 
-	h.apiListener = listener
-	h.apiNetListener = manet.NetListener(listener)
-	h.apiServer = &http.Server{}
+	h.gwListener = listener
+	h.gwNetListener = manet.NetListener(listener)
+	h.gwServer = &http.Server{}
 
 	go func() {
-		handler, err := corehttp.MakeHandler(h.node, h.apiNetListener, opts...)
+		handler, err := corehttp.MakeHandler(h.node, h.gwNetListener, opts...)
 		if err != nil {
 			setError(fmt.Errorf("make handler: %w", err))
 			return
 		}
-		h.apiServer.Handler = handler
+		h.gwServer.Handler = handler
 		if h.authToken != "" {
-			h.apiServer.Handler = authMiddleware(handler, h.authToken)
+			h.gwServer.Handler = authMiddleware(handler, h.authToken)
 		}
-		h.apiServer.Serve(h.apiNetListener)
+		h.gwServer.Serve(h.gwNetListener)
 	}()
 
 	setError(nil)
