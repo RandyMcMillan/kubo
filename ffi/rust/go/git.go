@@ -230,6 +230,20 @@ func kubo_git_repo_commit_lookup(handle uint64, hash *C.char) *C.char {
 	return C.CString(msg)
 }
 
+// resolveTree returns the tree for a hash that may be either a tree hash
+// or a commit hash (matching `git ls-tree <commit>` / `git diff <c> <c>`).
+func resolveTree(repo *git.Repository, hash string) (*object.Tree, error) {
+	h := plumbing.NewHash(hash)
+	if tree, err := repo.TreeObject(h); err == nil {
+		return tree, nil
+	}
+	commit, err := repo.CommitObject(h)
+	if err != nil {
+		return nil, err
+	}
+	return commit.Tree()
+}
+
 //export kubo_git_repo_tree_entries
 func kubo_git_repo_tree_entries(handle uint64, hash *C.char) *C.char {
 	gitReposMu.RLock()
@@ -241,7 +255,7 @@ func kubo_git_repo_tree_entries(handle uint64, hash *C.char) *C.char {
 		return nil
 	}
 
-	tree, err := repo.TreeObject(plumbing.NewHash(C.GoString(hash)))
+	tree, err := resolveTree(repo, C.GoString(hash))
 	if err != nil {
 		setError(fmt.Errorf("git tree lookup: %w", err))
 		return nil
@@ -336,13 +350,13 @@ func kubo_git_repo_diff_trees(handle uint64, old_hash *C.char, new_hash *C.char)
 		return nil
 	}
 
-	oldTree, err := repo.TreeObject(plumbing.NewHash(C.GoString(old_hash)))
+	oldTree, err := resolveTree(repo, C.GoString(old_hash))
 	if err != nil {
 		setError(fmt.Errorf("git old tree lookup: %w", err))
 		return nil
 	}
 
-	newTree, err := repo.TreeObject(plumbing.NewHash(C.GoString(new_hash)))
+	newTree, err := resolveTree(repo, C.GoString(new_hash))
 	if err != nil {
 		setError(fmt.Errorf("git new tree lookup: %w", err))
 		return nil
