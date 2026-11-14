@@ -125,6 +125,33 @@ fn main() {
             std::process::exit(1);
         }
     };
+    // Serve a one-shot setup shim from the gateway origin: it writes the
+    // node's API multiaddr into the WebUI's localStorage ('ipfsApi' is the
+    // only place the WebUI looks) and loads the WebUI. After one visit the
+    // gateway-hosted WebUI connects with no manual configuration. The Kubo
+    // RPC API itself cannot do this — localStorage is browser state.
+    let shim_dir = std::env::temp_dir().join(format!("kubo-webui-shim-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&shim_dir);
+    std::fs::create_dir_all(&shim_dir).expect("shim dir");
+    let (ah, ap) = host_port(&api);
+    let shim = format!(
+        r#"<!doctype html><meta charset="utf-8"><title>webui setup</title>
+<p>Configuring WebUI to talk to <code>/ip4/{ah}/tcp/{ap}/http</code> …</p>
+<script>
+localStorage.setItem('ipfsApi', '/ip4/{ah}/tcp/{ap}/http');
+location.replace('/ipfs/{root}/');
+</script>
+"#,
+        ah = ah,
+        ap = ap,
+        root = root
+    );
+    std::fs::write(shim_dir.join("index.html"), shim).expect("shim write");
+    if !node.add_static("/setup/", &shim_dir.to_string_lossy()) {
+        eprintln!("add_static(/setup) failed: {:?}", kubo_ffi::last_error());
+        std::process::exit(1);
+    }
+
     let gw = match node.start_gateway("/ip4/127.0.0.1/tcp/0") {
         Some(u) => u,
         None => {
@@ -140,14 +167,16 @@ fn main() {
         println!("WebUI (API redirect):  http://{}:{}/webui", ah, ap);
     }
     println!("WebUI (gateway direct): http://{}:{}/ipfs/{}/", gh, gp, root);
-    if !api_is_default {
-        println!();
-        println!("port 5001 was busy; the WebUI cannot auto-connect.");
-        println!("In the WebUI's connection screen, set the API address to:");
-        println!("  /ip4/{}/tcp/{}/http", ah, ap);
+    println!("WebUI (first time):     http://{}:{}/setup/", gh, gp);
+    println!();
+    println!("Open the /setup/ URL once per browser: it stores the node's API");
+    println!("address in this browser's WebUI settings, then loads the WebUI.");
+    if api_is_default {
+        println!("(API is on the default :5001, so the API-redirect WebUI already");
+        println!("connects without setup; /setup/ is for the gateway-hosted one.)");
     } else {
-        println!();
-        println!("The WebUI connects to this node automatically (default API localhost:5001).");
+        println!("(port 5001 was busy, so the /setup/ step is REQUIRED for the");
+        println!("gateway-hosted WebUI; the API-redirect WebUI needs no setup.)");
     }
     println!("Press Ctrl-C to stop.");
     loop {
