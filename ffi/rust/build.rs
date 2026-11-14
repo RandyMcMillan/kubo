@@ -80,18 +80,12 @@ fn main() {
     };
     let archive = out_dir.join(archive_name);
 
-    // Only rebuild when Go sources change.
-    for src in &[
-        "kubo.go",
-        "libp2p.go",
-        "git.go",
-        "nostr.go",
-        "error.go",
-        "command.go",
-        "main.go",
-    ] {
-        println!("cargo:rerun-if-changed={}", ffi_dir.join(src).display());
-    }
+    // Rebuild when any Go source in the module changes (directory watch
+    // covers every file, present and future).
+    println!(
+        "cargo:rerun-if-changed={}",
+        ffi_dir.display()
+    );
     println!(
         "cargo:rerun-if-changed={}",
         ffi_dir.join("go.mod").display()

@@ -139,6 +139,16 @@ extern "C" {
     fn kubo_nostr_nip19_decode_entity(bech32: *const c_char) -> *mut c_char;
     fn kubo_nostr_nip05_verify(identifier: *const c_char, pubkey: *const c_char) -> i64;
     fn kubo_nostr_nip05_query(identifier: *const c_char) -> *mut c_char;
+
+    // pin + dag + unixfs ls (Batch A)
+    fn kubo_pin_add(handle: u64, path_str: *const c_char) -> i64;
+    fn kubo_pin_rm(handle: u64, path_str: *const c_char) -> i64;
+    fn kubo_pin_ls(handle: u64) -> *mut c_char;
+    fn kubo_pin_is_pinned(handle: u64, path_str: *const c_char) -> i64;
+    fn kubo_pin_update(handle: u64, from_str: *const c_char, to_str: *const c_char) -> i64;
+    fn kubo_pin_verify(handle: u64) -> *mut c_char;
+    fn kubo_dag_import(handle: u64, data: *const u8, length: usize) -> *mut c_char;
+    fn kubo_unixfs_ls(handle: u64, path_str: *const c_char) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -924,6 +934,82 @@ pub fn nip05_query(identifier: &str) -> Result<String, String> {
     let i = cstr(identifier)?;
     let p = unsafe { kubo_nostr_nip05_query(i.as_ptr()) };
     from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "nip05 query failed".into()))
+}
+
+// ---------------------------------------------------------------------------
+// Pin + Dag + Unixfs ls (Batch A)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Pin a CID or /ipfs/... path.
+    pub fn pin_add(&self, cid_or_path: &str) -> Result<(), String> {
+        let c = cstr(cid_or_path)?;
+        let rc = unsafe { kubo_pin_add(self.0, c.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "pin add failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Unpin a CID or path.
+    pub fn pin_rm(&self, cid_or_path: &str) -> Result<(), String> {
+        let c = cstr(cid_or_path)?;
+        let rc = unsafe { kubo_pin_rm(self.0, c.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "pin rm failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// List pins as a JSON array of {path, name, type}.
+    pub fn pin_ls(&self) -> Result<String, String> {
+        let p = unsafe { kubo_pin_ls(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "pin ls failed".into()))
+    }
+
+    /// Whether a CID or path is pinned.
+    pub fn pin_is_pinned(&self, cid_or_path: &str) -> Result<bool, String> {
+        let c = cstr(cid_or_path)?;
+        let rc = unsafe { kubo_pin_is_pinned(self.0, c.as_ptr()) };
+        if rc < 0 {
+            Err(last_error().unwrap_or_else(|| "pin is_pinned failed".into()))
+        } else {
+            Ok(rc == 1)
+        }
+    }
+
+    /// Move a pin from one root to another.
+    pub fn pin_update(&self, from: &str, to: &str) -> Result<(), String> {
+        let f = cstr(from)?;
+        let t = cstr(to)?;
+        let rc = unsafe { kubo_pin_update(self.0, f.as_ptr(), t.as_ptr()) };
+        if rc != 0 {
+            Err(last_error().unwrap_or_else(|| "pin update failed".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Verify all pins; returns a JSON array of {ok, bad_nodes, err}.
+    pub fn pin_verify(&self) -> Result<String, String> {
+        let p = unsafe { kubo_pin_verify(self.0) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "pin verify failed".into()))
+    }
+
+    /// Import a CAR archive (bytes); pins the roots. Returns {"roots":[...]} JSON.
+    pub fn dag_import(&self, car: &[u8]) -> Result<String, String> {
+        let p = unsafe { kubo_dag_import(self.0, car.as_ptr(), car.len()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "dag import failed".into()))
+    }
+
+    /// List a UnixFS directory as a JSON array of {name, cid, size, type}.
+    pub fn unixfs_ls(&self, cid_or_path: &str) -> Result<String, String> {
+        let c = cstr(cid_or_path)?;
+        let p = unsafe { kubo_unixfs_ls(self.0, c.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "unixfs ls failed".into()))
+    }
 }
 
 #[cfg(test)]
