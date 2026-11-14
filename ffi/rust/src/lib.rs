@@ -203,6 +203,22 @@ extern "C" {
     fn kubo_config_get(handle: u64) -> *mut c_char;
     fn kubo_config_set(handle: u64, key: *const c_char, value_json: *const c_char) -> i64;
     fn kubo_node_shutdown(handle: u64) -> i64;
+
+    // standalone libp2p host (Batch G)
+    fn kubo_libp2p_host_new() -> u64;
+    fn kubo_libp2p_host_close(handle: u64) -> i64;
+    fn kubo_libp2p_host_peer_id(handle: u64) -> *mut c_char;
+    fn kubo_libp2p_host_listening_addrs(handle: u64) -> *mut c_char;
+    fn kubo_libp2p_host_connect(handle: u64, addr: *const c_char) -> i64;
+    fn kubo_libp2p_host_ping(handle: u64, peer_id: *const c_char) -> i64;
+    fn kubo_libp2p_host_protocols(handle: u64) -> *mut c_char;
+
+    // argv command variant (Batch G)
+    fn kubo_run_command(
+        repo_path: *const c_char,
+        argc: c_int,
+        argv: *mut *mut c_char,
+    ) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -506,6 +522,81 @@ impl Drop for Node {
 }
 
 // ---------------------------------------------------------------------------
+// Standalone libp2p host (no Kubo repo/node required)
+// ---------------------------------------------------------------------------
+
+/// A lightweight libp2p host independent of any Kubo node or repo.
+pub struct P2pHost(u64);
+
+impl P2pHost {
+    /// Start a host on an ephemeral loopback port.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Result<Self, String> {
+        let h = unsafe { kubo_libp2p_host_new() };
+        if h == 0 {
+            Err(last_error().unwrap_or_else(|| "libp2p host new failed".into()))
+        } else {
+            Ok(P2pHost(h))
+        }
+    }
+
+    pub fn peer_id(&self) -> Option<String> {
+        from_cstr(unsafe { kubo_libp2p_host_peer_id(self.0) })
+    }
+
+    /// Multiaddrs this host is listening on, one per line.
+    pub fn listening_addrs(&self) -> Result<String, String> {
+        from_cstr(unsafe { kubo_libp2p_host_listening_addrs(self.0) })
+            .ok_or_else(|| last_error().unwrap_or_else(|| "listening addrs failed".into()))
+    }
+
+    /// Dial a peer by full multiaddr including `/p2p/<peer-id>`.
+    pub fn connect(&self, addr: &str) -> Result<(), String> {
+        let a = cstr(addr)?;
+        if unsafe { kubo_libp2p_host_connect(self.0, a.as_ptr()) } == 0 {
+            Ok(())
+        } else {
+            Err(last_error().unwrap_or_else(|| "connect failed".into()))
+        }
+    }
+
+    /// Ping a peer; returns round-trip time in milliseconds.
+    pub fn ping(&self, peer_id: &str) -> Result<u64, String> {
+        let p = cstr(peer_id)?;
+        let rc = unsafe { kubo_libp2p_host_ping(self.0, p.as_ptr()) };
+        if rc < 0 {
+            Err(last_error().unwrap_or_else(|| "ping failed".into()))
+        } else {
+            Ok(rc as u64)
+        }
+    }
+
+    /// Negotiated stream protocols, one per line.
+    pub fn protocols(&self) -> Result<String, String> {
+        from_cstr(unsafe { kubo_libp2p_host_protocols(self.0) })
+            .ok_or_else(|| last_error().unwrap_or_else(|| "protocols failed".into()))
+    }
+
+    /// Close the host, releasing its listen sockets. Called again by Drop on
+    /// an already-closed handle; the duplicate is ignored.
+    pub fn close(&self) -> Result<(), String> {
+        if unsafe { kubo_libp2p_host_close(self.0) } == 0 {
+            Ok(())
+        } else {
+            Err(last_error().unwrap_or_else(|| "close failed".into()))
+        }
+    }
+}
+
+impl Drop for P2pHost {
+    fn drop(&mut self) {
+        unsafe {
+            kubo_libp2p_host_close(self.0);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Free functions
 // ---------------------------------------------------------------------------
 
@@ -513,6 +604,38 @@ pub fn run_command(repo_path: &str, line: &str) -> Result<String, String> {
     let rp = cstr(repo_path)?;
     let l = cstr(line)?;
     let p = unsafe { kubo_run_command_line(rp.as_ptr(), l.as_ptr()) };
+    if p.is_null() {
+        Err(last_error().unwrap_or_else(|| "command failed".into()))
+    } else {
+        let s = unsafe { CStr::from_ptr(p).to_string_lossy().to_string() };
+        unsafe { kubo_ffi_free_string(p) };
+        Ok(s)
+    }
+}
+
+/// Runs a Kubo command against a repo by argv, without shell-line parsing.
+/// Spawns its own node; prefer `Node::run_on_node` when one is running.
+///
+/// `args` must NOT include the leading "ipfs" token, e.g. `&["version"]`.
+pub fn run_command_argv(repo_path: &str, args: &[&str]) -> Result<String, String> {
+    let rp = cstr(repo_path)?;
+    let mut cstrings: Vec<CString> = Vec::with_capacity(args.len());
+    for a in args {
+        cstrings.push(cstr(a)?);
+    }
+    let mut argv: Vec<*mut c_char> =
+        cstrings.iter().map(|c| c.as_ptr() as *mut c_char).collect();
+    let p = unsafe {
+        kubo_run_command(
+            rp.as_ptr(),
+            argv.len() as c_int,
+            if argv.is_empty() {
+                std::ptr::null_mut()
+            } else {
+                argv.as_mut_ptr()
+            },
+        )
+    };
     if p.is_null() {
         Err(last_error().unwrap_or_else(|| "command failed".into()))
     } else {
@@ -1536,11 +1659,34 @@ mod tests {
         let _: fn(&NostrRelaySub) -> Option<String> = NostrRelaySub::drain;
         let _: fn(&NostrRelaySub) -> Result<(), String> = NostrRelaySub::unsubscribe;
         let _: fn(&str, &str) -> Result<String, String> = run_command;
+        let _: fn(&str, &[&str]) -> Result<String, String> = run_command_argv;
+        let _: fn(&Node, &str, &[&str]) -> Result<String, String> = Node::run_on_node;
+        let _: fn(&Node, &str, &str) -> Result<String, String> = Node::run;
+
+        // standalone libp2p host
+        let _: fn() -> Result<P2pHost, String> = P2pHost::new;
+        let _: fn(&P2pHost) -> Option<String> = P2pHost::peer_id;
+        let _: fn(&P2pHost) -> Result<String, String> = P2pHost::listening_addrs;
+        let _: fn(&P2pHost, &str) -> Result<(), String> = P2pHost::connect;
+        let _: fn(&P2pHost, &str) -> Result<u64, String> = P2pHost::ping;
+        let _: fn(&P2pHost) -> Result<String, String> = P2pHost::protocols;
+        let _: fn(&P2pHost) -> Result<(), String> = P2pHost::close;
     }
 
     #[test]
-    fn nsec_to_swarm_key() {
-        let nsec = "nsec18qvaqktundgyyc74vdxdl907tq0vam2aad2ptnku9cjw8ethdgdqzmwqct";
+    fn p2p_host_works() {
+        let h = P2pHost::new().expect("host start");
+        let id = h.peer_id().expect("peer id");
+        assert!(id.starts_with("12D3KooW") || id.len() >= 40);
+        let addrs = h.listening_addrs().expect("addrs");
+        assert!(addrs.contains("/ip4/127.0.0.1/tcp/"));
+        let protos = h.protocols().expect("protocols");
+        assert!(protos.contains("/ipfs/ping/1.0.0"));
+        h.close().expect("close");
+    }
+
+    #[test]
+    fn nsec_to_swarm_key() {        let nsec = "nsec18qvaqktundgyyc74vdxdl907tq0vam2aad2ptnku9cjw8ethdgdqzmwqct";
         let key = nostr_nsec_to_swarm_key(nsec).unwrap();
         assert!(key.contains("/key/swarm/psk/1.0.0/"));
         println!("swarm key from nsec:\n{}", key);
