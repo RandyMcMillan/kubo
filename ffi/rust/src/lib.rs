@@ -165,6 +165,20 @@ extern "C" {
     fn kubo_key_self(handle: u64) -> *mut c_char;
     fn kubo_key_rename(handle: u64, old_name: *const c_char, new_name: *const c_char) -> *mut c_char;
     fn kubo_key_remove(handle: u64, name: *const c_char) -> *mut c_char;
+
+    // objects (Batch D)
+    fn kubo_object_add_link(
+        handle: u64,
+        base: *const c_char,
+        name: *const c_char,
+        child: *const c_char,
+    ) -> *mut c_char;
+    fn kubo_object_rm_link(handle: u64, base: *const c_char, link: *const c_char) -> *mut c_char;
+    fn kubo_object_diff(
+        handle: u64,
+        base: *const c_char,
+        target: *const c_char,
+    ) -> *mut c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -1121,6 +1135,37 @@ impl Node {
         let n = cstr(name)?;
         let p = unsafe { kubo_key_remove(self.0, n.as_ptr()) };
         from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "key remove failed".into()))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Objects (Batch D)
+// ---------------------------------------------------------------------------
+
+impl Node {
+    /// Add a named link to a DAG object; returns the new root path.
+    pub fn object_add_link(&self, base: &str, name: &str, child: &str) -> Result<String, String> {
+        let b = cstr(base)?;
+        let n = cstr(name)?;
+        let c = cstr(child)?;
+        let p = unsafe { kubo_object_add_link(self.0, b.as_ptr(), n.as_ptr(), c.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "add link failed".into()))
+    }
+
+    /// Remove a named link from a DAG object; returns the new root path.
+    pub fn object_rm_link(&self, base: &str, link: &str) -> Result<String, String> {
+        let b = cstr(base)?;
+        let l = cstr(link)?;
+        let p = unsafe { kubo_object_rm_link(self.0, b.as_ptr(), l.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "rm link failed".into()))
+    }
+
+    /// Diff two DAG objects; JSON array of {type, path, before, after}.
+    pub fn object_diff(&self, base: &str, target: &str) -> Result<String, String> {
+        let b = cstr(base)?;
+        let t = cstr(target)?;
+        let p = unsafe { kubo_object_diff(self.0, b.as_ptr(), t.as_ptr()) };
+        from_cstr(p).ok_or_else(|| last_error().unwrap_or_else(|| "object diff failed".into()))
     }
 }
 
