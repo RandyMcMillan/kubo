@@ -6,7 +6,14 @@ use std::process::Command;
 fn main() {
     let manifest_dir =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
-    let ffi_dir = manifest_dir.join("..");
+    // Prefer the canonical module at ../ (the full kubo checkout; its
+    // go.mod replaces github.com/ipfs/kubo with the repo root). The
+    // in-crate go/ copy ships in the published tarball for consumers.
+    let ffi_dir = if manifest_dir.join("../go.mod").exists() {
+        manifest_dir.join("..")
+    } else {
+        manifest_dir.join("go")
+    };
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     let target = env::var("TARGET").expect("TARGET not set");
     let host = env::var("HOST").expect("HOST not set");

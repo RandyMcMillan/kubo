@@ -4,6 +4,7 @@ version = "975835.1839.124842"
 edition = "2021"
 description = "Safe Rust bindings to the Kubo C FFI layer"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/gnostr-org/ipfs"
 
 [dependencies]
 
