@@ -1,6 +1,6 @@
 # kubo-ffi exposure plan
 
-## Final state: COMPLETE — 135/135 Go exports wrapped (100%)
+## Final state: COMPLETE — 136/136 Go exports wrapped (100%)
 
 Every Go `//export` function in `ffi/*.go` has a safe Rust wrapper in
 `ffi/rust/src/lib.rs`. Every Kubo CoreAPI method is reachable through the
@@ -8,17 +8,17 @@ FFI, 40/40 with first-class wrappers. Removal or signature drift of any
 wrapper fails the build.
 
 Enforced at compile time by the `exposure_matrix()` test, and proven at
-runtime by `ffi_full_coverage` (131 live checks). `cargo test --lib`
+runtime by `ffi_full_coverage` (131 live checks: 130 pass, 0 fail, 1 network skip). `cargo test --lib`
 passes: 5 tests.
 
 ### Totals
 
 | Measure | Done | Total | Percent |
 |---|---|---|---|
-| Go exports wrapped in Rust | 135 | 135 | 100% |
+| Go exports wrapped in Rust | 136 | 136 | 100% |
 | CoreAPI methods with first-class wrapper | 40 | 40 | 100% |
 | Public Rust fns covered by exposure_matrix | 126 | 126 | 100% |
-| **Entire FFI exposure (Go export layer)** | **135** | **135** | **100%** |
+| **Entire FFI exposure (Go export layer)** | **136** | **136** | **100%** |
 
 The whole CLI/RPC command surface is also reachable through the argv
 command runner (`kubo_run_command*`) — MFS `files *`, advanced `dag`,
@@ -44,7 +44,7 @@ in the future.
 
 Legend: ✅ exposed + wrapped in Rust. Grouped by Go source file.
 
-### A. Go `//export` layer — 123/123
+### A. Go `//export` layer — 136/136
 
 `ffi/kubo.go` — node lifecycle, serving, content (25):
 
