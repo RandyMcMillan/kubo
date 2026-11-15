@@ -48,6 +48,20 @@ extern "C" {
         out: *mut *mut u8,
         out_len: *mut usize,
     ) -> i64;
+    fn kubo_unixfs_cat_timeout(
+        handle: u64,
+        cid_str: *const c_char,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+        timeout_ms: i64,
+    ) -> i64;
+    fn kubo_block_get_timeout(
+        handle: u64,
+        cid_str: *const c_char,
+        out: *mut *mut u8,
+        out_len: *mut usize,
+        timeout_ms: i64,
+    ) -> i64;
 
     // commands (full coverage)
     fn kubo_run_command_line(repo_path: *const c_char, line: *const c_char) -> *mut c_char;
@@ -296,6 +310,10 @@ fn cstr(s: &str) -> Result<CString, String> {
     CString::new(s).map_err(|e| e.to_string())
 }
 
+fn d2ms(d: Duration) -> i64 {
+    d.as_millis() as i64
+}
+
 fn from_cstr(p: *mut c_char) -> Option<String> {
     if p.is_null() {
         None
@@ -482,12 +500,54 @@ impl Node {
 
     /// Fetches the bytes for a CID. Returns the raw bytes (binary-safe).
     pub fn unixfs_cat(&self, cid: &str) -> Result<Vec<u8>, String> {
+        self.cat_inner(cid, None)
+    }
+
+    /// Like `unixfs_cat` but bounded: fetching missing content from the
+    /// network can wait forever (kubo lazily discovers providers); the
+    /// timeout variant fails with an error instead of blocking past the
+    /// deadline.
+    pub fn unixfs_cat_timeout(&self, cid: &str, timeout: Duration) -> Result<Vec<u8>, String> {
+        self.cat_inner(cid, Some(timeout))
+    }
+
+    fn cat_inner(&self, cid: &str, timeout: Option<Duration>) -> Result<Vec<u8>, String> {
         let c = cstr(cid)?;
         let mut out: *mut u8 = std::ptr::null_mut();
         let mut out_len: usize = 0;
-        let rc = unsafe { kubo_unixfs_cat(self.0, c.as_ptr(), &mut out, &mut out_len) };
+        let rc = unsafe {
+            match timeout {
+                None => kubo_unixfs_cat(self.0, c.as_ptr(), &mut out, &mut out_len),
+                Some(d) => kubo_unixfs_cat_timeout(
+                    self.0,
+                    c.as_ptr(),
+                    &mut out,
+                    &mut out_len,
+                    d.as_millis() as i64,
+                ),
+            }
+        };
         if rc != 0 {
             return Err(last_error().unwrap_or_else(|| "cat failed".into()));
+        }
+        if out.is_null() || out_len == 0 {
+            return Ok(Vec::new());
+        }
+        let bytes = unsafe { slice::from_raw_parts(out, out_len).to_vec() };
+        unsafe { kubo_ffi_free_buffer(out) };
+        Ok(bytes)
+    }
+
+    /// Like `block_get` but with a deadline (see `unixfs_cat_timeout`).
+    pub fn block_get_timeout(&self, cid: &str, timeout: Duration) -> Result<Vec<u8>, String> {
+        let c = cstr(cid)?;
+        let mut out: *mut u8 = std::ptr::null_mut();
+        let mut out_len: usize = 0;
+        let rc = unsafe {
+            kubo_block_get_timeout(self.0, c.as_ptr(), &mut out, &mut out_len, d2ms(timeout))
+        };
+        if rc != 0 {
+            return Err(last_error().unwrap_or_else(|| "block get failed".into()));
         }
         if out.is_null() || out_len == 0 {
             return Ok(Vec::new());
@@ -1734,6 +1794,8 @@ mod tests {
         let _: fn(&Node, &str, &str) -> Result<String, String> = Node::unixfs_add_path;
         let _: fn(&Node, &str, bool) -> Result<(), String> = Node::block_rm;
         let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::unixfs_cat;
+        let _: fn(&Node, &str, Duration) -> Result<Vec<u8>, String> = Node::unixfs_cat_timeout;
+        let _: fn(&Node, &str, Duration) -> Result<Vec<u8>, String> = Node::block_get_timeout;
         let _: fn(&Node, &str) -> Result<String, String> = Node::unixfs_ls;
         let _: fn(&Node, &[u8]) -> Result<String, String> = Node::block_put;
         let _: fn(&Node, &str) -> Result<Vec<u8>, String> = Node::block_get;
@@ -2044,6 +2106,59 @@ mod tests {
             if back == b"ffi-block-proof" { Ok(String::from_utf8_lossy(&back).to_string()) } else { Err("bytes differ".to_string()) }
         })());
         check!(t, "block_stat", node_a.block_stat(&blk).map(|n| format!("{n} bytes")));
+        check!(t, "block_rm", (|| -> Result<String, String> {
+            let tmp = node_a.block_put(b"doomed block")?;
+            node_a.block_rm(&tmp, false)?;
+            match node_a.block_get_timeout(&tmp, Duration::from_secs(3)) {
+                Err(_) => Ok("removed, get fails as expected".to_string()),
+                Ok(_) => Err("still retrievable after rm".to_string()),
+            }
+        })());
+
+        // ================================================================
+        banner("unixfs_add_path — full ipfs add (dir, cid_version, only_hash)");
+        let add_dir = tmpdir("addpath");
+        std::fs::create_dir_all(format!("{add_dir}/sub")).unwrap();
+        std::fs::write(format!("{add_dir}/hello.txt"), "hello from path add").unwrap();
+        std::fs::write(format!("{add_dir}/sub/nested.txt"), "nested content").unwrap();
+        check!(t, "unixfs_add_path (dir, cidv1)", (|| -> Result<String, String> {
+            let root = node_a.unixfs_add_path(&add_dir, r#"{"cid_version":1}"#)?;
+            let ls = node_a.unixfs_ls(&root)?;
+            let n = ls.matches("\"name\"").count();
+            if n >= 2 { Ok(format!("root {root}, {n} entries")) } else { Err(ls) }
+        })());
+        check!(t, "unixfs_add_path (only_hash determinism)", (|| -> Result<String, String> {
+            let oh_dir = tmpdir("onlyhash");
+            std::fs::write(format!("{oh_dir}/unique.txt"), format!("only-hash probe {}", std::process::id())).unwrap();
+            let h1 = node_a.unixfs_add_path(&oh_dir, r#"{"cid_version":1,"only_hash":true}"#)?;
+            let h2 = node_a.unixfs_add_path(&oh_dir, r#"{"cid_version":1,"only_hash":true}"#)?;
+            if h1 != h2 {
+                return Err("nondeterministic".to_string());
+            }
+            Ok(format!("{h1} deterministic"))
+        })());
+        check!(t, "only_hash absence (bounded probe)", (|| -> Result<String, String> {
+            // unixfs_ls on missing content would block on provider
+            // discovery (faithful kubo behavior); cat with a deadline is
+            // the bounded probe.
+            let oh_dir = tmpdir("onlyhash2");
+            std::fs::write(format!("{oh_dir}/unique.txt"), format!("only-hash probe 2 {}", std::process::id())).unwrap();
+            let h = node_a.unixfs_add_path(&oh_dir, r#"{"cid_version":1,"only_hash":true}"#)?;
+            match node_a.unixfs_cat_timeout(&h, Duration::from_secs(3)) {
+                Err(_) => Ok(format!("{h} not retrievable")),
+                Ok(_) => Err("only_hash content retrievable".to_string()),
+            }
+        })());
+        check!(t, "unixfs_add_path (wrap)", (|| -> Result<String, String> {
+            let file = format!("{add_dir}/hello.txt");
+            let plain = node_a.unixfs_add_path(&file, r#"{"cid_version":1}"#)?;
+            let wrapped = node_a.unixfs_add_path(&file, r#"{"cid_version":1,"wrap":true}"#)?;
+            if wrapped == plain {
+                return Err("wrap changed nothing".to_string());
+            }
+            let ls = node_a.unixfs_ls(&wrapped)?;
+            if ls.contains("hello.txt") { Ok(format!("wrapped root {wrapped}")) } else { Err(ls) }
+        })());
 
         // ================================================================
         banner("pin — add/ls/is_pinned/update/verify/rm");
@@ -2366,7 +2481,10 @@ mod tests {
             match NostrRelay::connect("wss://nos.lol") {
                 Ok(relay) => {
                     t.ok("NostrRelay::connect", "wss://nos.lol".to_string());
-                    check!(t, "NostrRelay::publish", relay.publish(&event).map(|_| "accepted".to_string()));
+                    match relay.publish(&event) {
+                        Ok(()) => t.ok("NostrRelay::publish", "accepted".to_string()),
+                        Err(e) => t.skip("NostrRelay::publish", format!("network: {e}")),
+                    }
                     let filter = r#"{"kinds":[1],"limit":1}"#;
                     match relay.subscribe(filter) {
                         Ok(sub) => {
@@ -2483,5 +2601,51 @@ mod tests {
         check!(t, "P2pHost::ping", hb.ping(&c_id).map(|rtt| format!("{rtt} ms rtt")));
         check!(t, "P2pHost::protocols", hb.protocols().map(|p| p.replace('\n', " ").chars().take(60).collect::<String>()));
         check!(t, "P2pHost::close", hb.close().and_then(|_| hc.close()));
+
+        // ================================================================
+        banner("raw streams — custom protocol echo over two hosts");
+        let ha = P2pHost::new().expect("host a");
+        let hd = P2pHost::new().expect("host d");
+        let d_id = hd.peer_id().unwrap_or_default();
+        let a_id = ha.peer_id().unwrap_or_default();
+        let d_addr = hd.listening_addrs().unwrap_or_default();
+        check!(t, "P2pHost::connect (A->D)", ha.connect(&format!("{d_addr}/p2p/{d_id}")).map(|_| "dialed".to_string()));
+        check!(t, "set_stream_handler (D)", hd.set_stream_handler("/ffi/echo/1.0.0"));
+        let mut client = match ha.new_stream(&d_id, "/ffi/echo/1.0.0") {
+            Ok(s) => {
+                t.ok("new_stream (A)", "stream opened".to_string());
+                Some(s)
+            }
+            Err(e) => {
+                t.fail("new_stream (A)", e);
+                None
+            }
+        };
+        if let Some(stream) = client.take() {
+            check!(t, "stream write (ping)", stream.write(b"ping-ffi").map(|n| format!("{n} bytes")));
+            let server = hd.accept_stream(Some(Duration::from_secs(10)));
+            match server {
+                Ok(srv) => {
+                    check!(t, "accept_stream (D)", srv.protocol().ok_or("no protocol"));
+                    check!(t, "stream remote_peer", srv.remote_peer().map(|p| if p == a_id { format!("{p} (matches A)") } else { p }).ok_or("no peer"));
+                    check!(t, "stream read (got ping)", (|| -> Result<String, String> {
+                        match srv.read()? {
+                            Some(b) if b == b"ping-ffi" => Ok("ping-ffi".to_string()),
+                            other => Err(format!("unexpected: {other:?}")),
+                        }
+                    })());
+                    check!(t, "stream write (pong)", srv.write(b"pong-ffi").map(|n| format!("{n} bytes")));
+                    check!(t, "stream close (server)", srv.close());
+                }
+                Err(e) => t.fail("accept_stream (D)", e),
+            }
+            check!(t, "stream read (got pong)", (|| -> Result<String, String> {
+                match stream.read()? {
+                    Some(b) if b == b"pong-ffi" => Ok("pong-ffi".to_string()),
+                    other => Err(format!("unexpected: {other:?}")),
+                }
+            })());
+            check!(t, "stream close (client)", stream.close());
+        }
     }
 }

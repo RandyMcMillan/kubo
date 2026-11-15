@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -1029,7 +1030,11 @@ func kubo_block_rm(handle uint64, cidStr *C.char, force C.uint8_t) int64 {
 		return -1
 	}
 
-	p, err := path.NewPath(C.GoString(cidStr))
+	pstr := C.GoString(cidStr)
+	if !strings.HasPrefix(pstr, "/ipfs/") && !strings.HasPrefix(pstr, "/ipns/") {
+		pstr = "/ipfs/" + pstr
+	}
+	p, err := path.NewPath(pstr)
 	if err != nil {
 		setError(fmt.Errorf("parse path: %w", err))
 		return -1
@@ -1057,7 +1062,25 @@ func kubo_unixfs_cat(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.s
 		setError(fmt.Errorf("invalid handle %d", handle))
 		return -1
 	}
+	return unixfsCatCtx(h.ctx, h, cidStr, out, outLen)
+}
 
+//export kubo_unixfs_cat_timeout
+func kubo_unixfs_cat_timeout(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.size_t, timeoutMs C.int64_t) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+	ctx, cancel := context.WithTimeout(h.ctx, time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+	return unixfsCatCtx(ctx, h, cidStr, out, outLen)
+}
+
+func unixfsCatCtx(ctx context.Context, h *nodeHandle, cidStr *C.char, out **C.uint8_t, outLen *C.size_t) int64 {
 	cidStrGo := C.GoString(cidStr)
 	var p path.Path
 	var err error
@@ -1076,7 +1099,7 @@ func kubo_unixfs_cat(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.s
 		return -1
 	}
 
-	node, err := h.api.Unixfs().Get(h.ctx, p)
+	node, err := h.api.Unixfs().Get(ctx, p)
 	if err != nil {
 		setError(fmt.Errorf("unixfs get: %w", err))
 		return -1
@@ -1146,7 +1169,25 @@ func kubo_block_get(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.si
 		setError(fmt.Errorf("invalid handle %d", handle))
 		return -1
 	}
+	return blockGetCtx(h.ctx, h, cidStr, out, outLen)
+}
 
+//export kubo_block_get_timeout
+func kubo_block_get_timeout(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.size_t, timeoutMs C.int64_t) int64 {
+	nodesMu.RLock()
+	h, ok := nodes[handle]
+	nodesMu.RUnlock()
+
+	if !ok {
+		setError(fmt.Errorf("invalid handle %d", handle))
+		return -1
+	}
+	ctx, cancel := context.WithTimeout(h.ctx, time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+	return blockGetCtx(ctx, h, cidStr, out, outLen)
+}
+
+func blockGetCtx(ctx context.Context, h *nodeHandle, cidStr *C.char, out **C.uint8_t, outLen *C.size_t) int64 {
 	cidStrGo := C.GoString(cidStr)
 	var p path.Path
 	var err error
@@ -1165,7 +1206,7 @@ func kubo_block_get(handle uint64, cidStr *C.char, out **C.uint8_t, outLen *C.si
 		return -1
 	}
 
-	reader, err := h.api.Block().Get(h.ctx, p)
+	reader, err := h.api.Block().Get(ctx, p)
 	if err != nil {
 		setError(fmt.Errorf("block get: %w", err))
 		return -1
