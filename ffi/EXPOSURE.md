@@ -306,6 +306,22 @@ standalone libp2p host (`P2pHost`).
   bandwidth, config, shutdown + `exposure_matrix()` (`ffi/ops.go`).
 - Batch G — `88929b02f`, tag `ffi-exposure-batch-g`: standalone libp2p
   host (P2pHost), argv command variant, matrix completion to 114/114.
+- Batch S1 — `5384cb92b`, tag `ffi-batch-s1`: full `Unixfs.Add`
+  (path + options JSON) and `Block.Rm`; CoreAPI reaches 40/40 first-class.
+- Batch S2 — `2278d3e4f`, tag `ffi-batch-s2`: raw libp2p stream plumbing —
+  `set_stream_handler`, `accept_stream`, `new_stream`, `P2pStream`
+  read/write/close/reset/protocol/remote_peer.
+- Batch S3 — `15b64b725`, tag `ffi-batch-s3`: coverage tests for S1/S2
+  (131 checks), globally-unique stream handles, bare-CID `block_rm`,
+  `unixfs_cat_timeout` / `block_get_timeout`.
+- `d472272cb`, tag `ffi-coverage-bugfixes`: five runtime bugs found by the
+  coverage suite (object_diff nil-path SEGV, api static-dir sentinel panic,
+  git commit-hash resolution, relay sub context, pubsub build opt).
+- `37dbc8781`, tag `ffi-full-coverage`: the 111-check runtime suite itself.
+- `eecce6b75`, tag `ffi-web-feature`: `web` feature — self-contained WebUI
+  server in the library (`kubo_ffi::web`).
+- `f23abd322`, tag `ffi-binary`: cfg-gated `kubo-ffi` mains (WebUI server
+  with `web`, FFI demo without).
 
 `build.rs` change riding with these commits: `rerun-if-changed` watches
 the whole Go module directory, so new `.go` files trigger a rebuild.

@@ -1,3 +1,36 @@
+# gnostr-org/ipfs — fork notice (read first)
+
+This fork adds a complete C FFI layer (`ffi/`) to upstream Kubo, with the
+Rust crate `kubo-ffi` (`ffi/rust/`) as the primary consumer: one dependency
+for the whole IPFS stack — full Kubo node (unixfs, blocks, dag/CAR, pins,
+IPNS, keys, swarm, pubsub, DHT routing, gateway + API serving, MFS via the
+command runner), a standalone libp2p host with raw stream plumbing for
+arbitrary protocols, git-over-IPFS, and nostr keys/relays. State: 136/136
+Go exports wrapped, 40/40 CoreAPI methods first-class, compile-time
+`exposure_matrix` + 130-check runtime suite. The maintained accounting is
+`ffi/EXPOSURE.md`.
+
+Conventions that override/extend the upstream guidance below, inside
+`ffi/` and `ffi/rust/`:
+
+- Every new `//export` gets a safe Rust wrapper AND an `exposure_matrix()`
+  entry, or the crate fails to compile. Extend the matrix with the symbol.
+- After editing `ffi/*.go`, sync `ffi/rust/go/` (same files; its `go.mod`
+  requires upstream kubo from the proxy — no local `replace`).
+- Runtime-proof new surface in `ffi_full_coverage` (bannered sections;
+  `cargo test --lib ffi_full_coverage -- --nocapture --test-threads=1`).
+- One topic per commit; tag each batch (`ffi-batch-*`, `ffi-exposure-*`).
+- `last_error` is process-global (races under concurrency); non-local
+  fetches block on provider discovery — use the `_timeout` variants.
+- The `webui/` submodule is the ipfs-webui source; the WebUI CAR consumed
+  by the `web` feature is the canonical release asset (see
+  `ffi/rust/assets/build-webui-car.sh` for the rebuild recipe).
+
+Everything below this notice is the upstream Kubo guidance, which still
+applies to the core tree.
+
+---
+
 # AI Agent Instructions for Kubo
 
 This file provides instructions for AI coding agents working on the [Kubo](https://github.com/ipfs/kubo) codebase (the Go implementation of IPFS). Follow the [Developer Guide](docs/developer-guide.md) for full details.

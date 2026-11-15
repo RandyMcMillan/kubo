@@ -1,3 +1,46 @@
+//! Safe Rust bindings to Kubo's C FFI layer — one dependency for the whole
+//! IPFS stack: a full Kubo node (content, pins, IPNS, DHT, pubsub, gateway,
+//! MFS via the command runner), a standalone libp2p host with raw stream
+//! plumbing for arbitrary protocols, git-over-IPFS, and nostr keys/relays.
+//!
+//! # Layers
+//!
+//! - [`Node`] — a Kubo node: lifecycle, unixfs (bytes + full path adds),
+//!   blocks, dag/CAR import, pins, objects, IPNS, keys, swarm, pubsub,
+//!   routing, repo/config/bootstrap, API + gateway serving.
+//! - [`P2pHost`] / [`P2pStream`] — standalone libp2p host: dial, ping,
+//!   arbitrary protocol handlers, raw bidirectional streams.
+//! - [`GitRepo`] and the `git_*` free functions — go-git bindings.
+//! - nostr: `nostr_*` keys/sign/verify/nip19, `NostrRelay`, nip05.
+//! - Escape hatch: [`run_command`], [`run_command_argv`], [`Node::run`],
+//!   [`Node::run_on_node`] execute the full kubo CLI/RPC command tree.
+//!
+//! # Feature flags
+//!
+//! - `web` — embeds the IPFS WebUI CAR (fetched and sha256-verified by
+//!   `build.rs`; `KUBO_FFI_SKIP_WEBUI_ASSET=1` opts out) and exposes
+//!   [`web`]: a self-contained WebUI server (`WebNode::start`).
+//!
+//! # Safety model
+//!
+//! All FFI calls are `unsafe` internally and safe at this API boundary.
+//! Handles are u64 tokens into Go-side registries. Two caveats:
+//!
+//! - [`last_error`] reads process-global Go state; under concurrent FFI
+//!   calls from multiple threads the message can race with another call's
+//!   error. Treat it as best-effort diagnostics, not per-call precision.
+//! - Fetching content that is not local blocks while kubo discovers
+//!   providers (faithful daemon behavior); use the `_timeout` variants
+//!   ([`Node::unixfs_cat_timeout`], [`Node::block_get_timeout`]) to bound it.
+//!
+//! # Correctness enforcement
+//!
+//! `exposure_matrix()` references every public function by fn pointer: the
+//! crate fails to compile if any wrapper regresses. Runtime proof lives in
+//! `ffi_full_coverage` (130+ live checks against real nodes; run with
+//! `cargo test --lib ffi_full_coverage -- --nocapture --test-threads=1`).
+//! The authoritative accounting is `ffi/EXPOSURE.md` (136/136 exports).
+
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_int;
 use std::slice;
