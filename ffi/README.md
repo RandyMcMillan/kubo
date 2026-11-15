@@ -1,34 +1,88 @@
 # Kubo FFI
 
-C FFI layer for Kubo, exposing IPFS functionality to C and other languages
-(notably Rust via `ffi/rust` and Swift via `ffi/swift`).
+C FFI layer for Kubo, exposing the IPFS stack to C and other languages —
+notably Rust via `ffi/rust` (the primary consumer) and Swift via
+`ffi/swift`.
+
+One dependency does everything: a full Kubo node (unixfs adds, blocks,
+dag/CAR, pins, objects, IPNS, keys, swarm, pubsub, DHT routing, gateway +
+API serving, MFS via the command runner), a standalone libp2p host with
+raw stream plumbing for arbitrary protocols, git-over-IPFS, and nostr
+keys/relays.
+
+## Layout
+
+- `ffi/*.go` — the FFI module (`package main`, built as c-archive/c-shared).
+  One file per subsystem: `kubo.go` (node lifecycle, content, serving),
+  `pin.go`, `swarm.go`, `ipns.go`, `object.go`, `pubsub.go`, `ops.go`,
+  `libp2p.go`, `git.go`, `nostr.go`, `command.go`, `error.go`.
+- `ffi/rust/` — the `kubo-ffi` crate: safe Rust over the c-archive.
+  - `src/lib.rs` — all 136 wrappers + `exposure_matrix()` compile-time test
+    + `ffi_full_coverage` runtime suite.
+  - `src/web.rs` — `web` feature: self-contained WebUI server.
+  - `src/main.rs` — `kubo-ffi` binary (WebUI server with `--features web`,
+    FFI demo without).
+  - `go/` — self-contained copy of the Go module for crates.io tarballs
+    (requires upstream `kubo` from the proxy; `build.rs` prefers the
+    canonical `../` module in this repo).
+  - `examples/` — `web.rs` (self-contained WebUI demo), `smoke.rs`,
+    `tui.rs`.
+- `ffi/EXPOSURE.md` — the authoritative accounting: 136/136 exports
+  wrapped, 40/40 CoreAPI first-class, phase log with commits and tags.
+- `webui/` — submodule (ipfs-webui source; used by
+  `ffi/rust/assets/build-webui-car.sh` to rebuild the WebUI CAR).
 
 ## Building
 
-Build the Go package:
+Go side:
 
 ```sh
 make ffi
-# or: cd ffi && go build ./...
-```
-
-Build a C shared library:
-
-```sh
-make ffi-shared
-# or: cd ffi && go build -buildmode=c-shared -o libkubo.dylib .
-```
-
-Build a C static archive (used by the Rust/Swift bindings):
-
-```sh
 cd ffi && go build -buildmode=c-archive -o tmp/libkubo_ffi.a .
 ```
 
-## Exports
+Rust side (build.rs compiles the Go module automatically):
 
-Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`, `error.go`,
-`command.go`):
+```sh
+cd ffi/rust
+cargo build                          # lib
+cargo build --features web           # lib + WebUI server module
+cargo run --example web              # self-contained WebUI demo
+cargo test --lib                     # 5 tests incl. the runtime suite
+cargo test --lib ffi_full_coverage -- --nocapture --test-threads=1
+```
+
+`build.rs` fetches the WebUI CAR (29MB, sha256-verified) into `OUT_DIR`
+on first build; `KUBO_FFI_SKIP_WEBUI_ASSET=1` opts out (offline/CI).
+
+## Hard rules (enforced in CI-by-convention)
+
+1. Every new `//export` gets a safe Rust wrapper AND an
+   `exposure_matrix()` entry — the crate fails to compile otherwise.
+2. After changing `ffi/*.go`, sync `ffi/rust/go/` (same files, plus the
+   standalone `go.mod`/`go.sum` that require upstream kubo from the
+   proxy).
+3. Runtime-proof new surface in `ffi_full_coverage` (bannered sections).
+4. One topic per commit; tag each batch (`ffi-batch-*`, `ffi-exposure-*`).
+
+## Safety notes for FFI callers
+
+- Error strings come from process-global Go state (`kubo_ffi_last_error`);
+  under concurrent calls they can race — diagnostics only.
+- Fetching non-local content blocks on provider discovery; use the
+  `_timeout` variants (`kubo_unixfs_cat_timeout`, `kubo_block_get_timeout`).
+- Stream/peer/node handles are u64 tokens owned by Go registries; closing
+  twice is tolerated, using after close is not.
+
+The original export-by-export reference below predates the batch work;
+`EXPOSURE.md` is the maintained record.
+
+---
+
+## Exports (historical reference, see EXPOSURE.md)
+
+Typed exports (see `kubo.go`, `libp2p.go`, `git.go`, `nostr.go`,
+`error.go`, `command.go`):
 
 - `kubo_version()` — Kubo version string.
 - `kubo_ffi_last_error()` / `kubo_ffi_free_string()` / `kubo_ffi_free_buffer()` — error and memory management.
