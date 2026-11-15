@@ -1,38 +1,44 @@
 # kubo-ffi exposure plan
 
-## Final state: COMPLETE — 123/123 Go exports wrapped (100%)
+## Final state: COMPLETE — 135/135 Go exports wrapped (100%)
 
 Every Go `//export` function in `ffi/*.go` has a safe Rust wrapper in
 `ffi/rust/src/lib.rs`. Every Kubo CoreAPI method is reachable through the
-FFI. Removal or signature drift of any wrapper fails the build.
+FFI, 40/40 with first-class wrappers. Removal or signature drift of any
+wrapper fails the build.
 
-Enforced at compile time by the `exposure_matrix()` test: 121 `fn`-pointer
-references covering all 114 public Rust functions. `cargo test --lib`
-passes: 4 tests (version_works, p2p_host_works, nsec_to_swarm_key,
-exposure_matrix).
+Enforced at compile time by the `exposure_matrix()` test, and proven at
+runtime by `ffi_full_coverage` (131 live checks). `cargo test --lib`
+passes: 5 tests.
 
 ### Totals
 
 | Measure | Done | Total | Percent |
 |---|---|---|---|
-| Go exports wrapped in Rust | 123 | 123 | 100% |
-| CoreAPI methods with first-class wrapper | 39 | 40 | 97.5% |
-| CoreAPI methods reachable (incl. command runner) | 40 | 40 | 100% |
-| Public Rust fns covered by exposure_matrix | 114 | 114 | 100% |
-| **Entire FFI exposure (Go export layer)** | **123** | **123** | **100%** |
+| Go exports wrapped in Rust | 135 | 135 | 100% |
+| CoreAPI methods with first-class wrapper | 40 | 40 | 100% |
+| Public Rust fns covered by exposure_matrix | 126 | 126 | 100% |
+| **Entire FFI exposure (Go export layer)** | **135** | **135** | **100%** |
 
-The one CoreAPI method without a dedicated wrapper is `Block.Rm`
-(destructive; deliberately routed through the argv command runner:
-`run_command_argv(repo, &["block", "rm", cid])`). The whole CLI command
-surface is reachable that way — that is the documented "full coverage"
-escape hatch behind `kubo_run_command*`.
+The whole CLI/RPC command surface is also reachable through the argv
+command runner (`kubo_run_command*`) — MFS `files *`, advanced `dag`,
+`bitswap`, `cid`, `multibase`, and anything else the command tree grows
+in the future.
 
-### Known partials (2, deliberate)
+### Known partials (1, deliberate)
 
-1. `Unixfs.Add` is bytes-only (`unixfs_add_bytes`); no file/dir/progress
-   variant. Use `dag_import` for CAR files.
-2. `repo verify` has no dedicated export; it is not a CoreAPI method in
-   kubo 0.43. The `pin_verify` wrapper covers the equivalent pin-check.
+1. `Unixfs.Add` progress events and fs-cache are not wired; every other
+   add option is (`unixfs_add_path`: cid_version, chunker, layout, pin,
+   raw_leaves, only_hash, nocopy, inline, preserve_mode, preserve_mtime,
+   wrap). Progress reporting goes through the command runner.
+
+### Beyond the CoreAPI iface list
+
+- repo stat/gc, bootstrap list/add/rm, bandwidth, config get/set,
+  node shutdown (Batch F)
+- standalone libp2p host with **raw stream plumbing** (Batches G + S2):
+  arbitrary protocol handlers, stream accept/dial, read/write/close/
+  reset — any `/proto/1.0.0` can be spoken, not just built-in ones
 
 ## Itemized record
 

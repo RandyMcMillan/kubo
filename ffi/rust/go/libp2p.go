@@ -37,7 +37,6 @@ type libp2pHostHandle struct {
 
 	streamsMu sync.Mutex
 	streams   map[uint64]network.Stream
-	nextStrm  uint64
 	incoming  chan network.Stream
 }
 
@@ -217,10 +216,17 @@ func kubo_libp2p_host_protocols(handle uint64) *C.char {
 // over libp2p streams — any protocol, not just the built-in ones.
 // ---------------------------------------------------------------------------
 
+var (
+	libp2pStreamsMu sync.Mutex
+	nextStreamID    uint64 = 1 // 0 is the FFI error sentinel; global so handles never collide across hosts
+)
+
 func (h *libp2pHostHandle) registerStream(s network.Stream) uint64 {
+	libp2pStreamsMu.Lock()
+	hid := nextStreamID
+	nextStreamID++
+	libp2pStreamsMu.Unlock()
 	h.streamsMu.Lock()
-	hid := h.nextStrm
-	h.nextStrm++
 	h.streams[hid] = s
 	h.streamsMu.Unlock()
 	return hid
